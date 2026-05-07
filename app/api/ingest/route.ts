@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
   console.log("[ingest] POST hit");
   const secret = req.headers.get("x-cron-secret");
   console.log("[ingest] secret match:", secret === CRON_SECRET);
-  if (!secret || secret !== CRON_SECRET) {
+  const vercelCron = req.headers.get("authorization") === `Bearer ${CRON_SECRET}`;
+  if ((!secret || secret !== CRON_SECRET) && !vercelCron) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

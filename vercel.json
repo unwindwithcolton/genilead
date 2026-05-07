@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/ingest",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/score-listings",
+      "schedule": "30 6 * * *"
+    }
+  ]
+}
