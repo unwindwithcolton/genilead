@@ -88,7 +88,7 @@ export default function HomePage() {
 
   // ── Derived counts for nav badges ─────────────────────────────────────────
   // hotCount = number of HOT listings — drives the Leads badge
-  const hotCount = listings.filter((l) => l.temperature === "hot").length;
+  const hotCount = listings.filter((l) => l.latest_score?.temperature === "hot").length;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (loading) {
