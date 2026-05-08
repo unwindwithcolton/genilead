@@ -1,6 +1,6 @@
 /* app/globals.css */
 /* Design tokens for GeniLead dark dashboard */
-
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 :root {
   --bg-base: #0b0d11;
   --bg-surface: #13151b;
@@ -33,7 +33,7 @@
   --success: #10b981;
   --success-dim: rgba(16, 185, 129, 0.12);
 
-  --font-ui: var(--font-inter), var(--font-geist-sans), -apple-system, sans-serif;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: var(--font-geist-mono), "Courier New", monospace;
 
   --r-sm: 6px;
