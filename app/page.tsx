@@ -1,102 +1,79 @@
+// app/page.tsx
+// Main app shell — auth gate, sidebar nav, screen routing
+// Uses createClient() factory pattern from lib/supabase.ts
+
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "../lib/supabase";
-import type { ScoredListing } from "../types";
-import ListingCard from "../components/ListingCard";
-import BottomNav, { type RootTab } from "../components/BottomNav";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase";
+import type { Session } from "@supabase/supabase-js";
 
-import dynamic from "next/dynamic";
-const LoginScreen = dynamic(() => import("../components/LoginScreen"), {
-  ssr: false,
-});
+import LoginScreen from "@/components/LoginScreen";
+import Sidebar, { type Tab } from "@/components/Sidebar";
+import DashboardScreen from "@/components/screens/DashboardScreen";
+import OpportunitiesScreen from "@/components/screens/OpportunitiesScreen";
+import InboxScreen from "@/components/screens/InboxScreen";
+import PipelineScreen from "@/components/screens/PipelineScreen";
+import ExplorerScreen from "@/components/screens/ExplorerScreen";
+import OutreachScreen from "@/components/screens/OutreachScreen";
+import ReportsScreen from "@/components/screens/ReportsScreen";
+import SettingsScreen from "@/components/screens/SettingsScreen";
 
-type Session = Awaited<
-  ReturnType<ReturnType<typeof createClient>["auth"]["getSession"]>
->["data"]["session"];
-
-// ─── Placeholder screens ──────────────────────────────────────────────────────
-
-function LeadsScreen() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-8">
-      <p className="text-5xl mb-4">📋</p>
-      <p className="text-[var(--color-text)] font-semibold text-lg">Leads Pipeline</p>
-      <p className="text-[var(--color-text-muted)] text-sm mt-2">
-        Full leads management coming next session.
-      </p>
-    </div>
-  );
-}
-
-function ApptScreen() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-8">
-      <p className="text-5xl mb-4">📅</p>
-      <p className="text-[var(--color-text)] font-semibold text-lg">Appointments</p>
-      <p className="text-[var(--color-text-muted)] text-sm mt-2">
-        Appointment scheduling coming next session.
-      </p>
-    </div>
-  );
-}
-
-// ─── Main page ────────────────────────────────────────────────────────────────
-
-export default function HomePage() {
-  const [session, setSession] = useState<Session>(null);
+export default function App() {
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [listings, setListings] = useState<ScoredListing[]>([]);
-  const [listingsLoading, setListingsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<RootTab>("home");
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [hotCount, setHotCount] = useState(0);
 
-  const supabase = createClient();
-
-  // ── Auth listener ──────────────────────────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    const supabase = createClient();
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
       setLoading(false);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
     });
 
     return () => subscription.unsubscribe();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  // ── Fetch listings once authed ─────────────────────────────────────────────
+  // Fetch HOT count for sidebar badge
   useEffect(() => {
     if (!session) return;
+    const supabase = createClient();
 
-    setListingsLoading(true);
-    setError(null);
+    async function fetchHotCount() {
+      const { data } = await supabase
+        .from("listing_scores")
+        .select("id")
+        .eq("temperature", "HOT");
+      setHotCount(data?.length ?? 0);
+    }
 
-    fetch("/api/listings")
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        setListings(json.listings ?? []);
-      })
-      .catch((err) => setError(String(err)))
-      .finally(() => setListingsLoading(false));
+    fetchHotCount();
   }, [session]);
 
-  // ── Derived counts for nav badges ─────────────────────────────────────────
-  // hotCount = number of HOT listings — drives the Leads badge
-  const hotCount = listings.filter((l) => l.latest_score?.temperature === "hot").length;
-
-  // ── Render ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[var(--color-bg)]">
-        <div className="text-[var(--color-text-muted)] text-sm tracking-widest animate-pulse">
-          LOADING…
-        </div>
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--bg-base)",
+          color: "var(--text-muted)",
+          fontSize: "13px",
+          fontFamily: "var(--font-mono)",
+          letterSpacing: "0.04em",
+        }}
+      >
+        Loading...
       </div>
     );
   }
@@ -105,61 +82,41 @@ export default function HomePage() {
     return <LoginScreen />;
   }
 
+  function handleSignOut() {
+    createClient().auth.signOut();
+  }
+
+  const screenMap: Record<Tab, React.ReactNode> = {
+    dashboard:     <DashboardScreen onNavigate={setActiveTab} />,
+    opportunities: <OpportunitiesScreen />,
+    inbox:         <InboxScreen />,
+    pipeline:      <PipelineScreen />,
+    explorer:      <ExplorerScreen />,
+    outreach:      <OutreachScreen />,
+    reports:       <ReportsScreen />,
+    settings:      <SettingsScreen />,
+  };
+
   return (
-    <main className="min-h-screen bg-[var(--color-bg)] pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-border)] px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-bold tracking-tight text-[var(--color-text)]">
-          GeniLead
-        </h1>
-        <button
-          onClick={() => supabase.auth.signOut()}
-          className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
-        >
-          Sign out
-        </button>
-      </header>
-
-      {/* Tab body */}
-      <section className="px-4 pt-4 space-y-3">
-        {activeTab === "home" && (
-          <>
-            {listingsLoading && (
-              <p className="text-center text-[var(--color-text-muted)] text-sm py-12 animate-pulse">
-                Fetching listings…
-              </p>
-            )}
-
-            {error && (
-              <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-4 text-red-400 text-sm">
-                {error}
-              </div>
-            )}
-
-            {!listingsLoading && !error && listings.length === 0 && (
-              <div className="text-center py-20 text-[var(--color-text-muted)] text-sm">
-                <p className="text-4xl mb-3">🏚️</p>
-                <p>No listings found for your zip codes.</p>
-                <p className="mt-1 text-xs">Run the ingest job to pull fresh data.</p>
-              </div>
-            )}
-
-            {listings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
-          </>
-        )}
-
-        {activeTab === "leads" && <LeadsScreen />}
-        {activeTab === "appt" && <ApptScreen />}
-      </section>
-
-      {/* Bottom nav — always visible when authed */}
-      <BottomNav
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+      <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        newLeadCount={hotCount}
+        hotCount={hotCount}
+        userEmail={session.user.email}
+        onSignOut={handleSignOut}
       />
-    </main>
+      <main
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          background: "var(--bg-base)",
+        }}
+      >
+        {screenMap[activeTab]}
+      </main>
+    </div>
   );
 }
