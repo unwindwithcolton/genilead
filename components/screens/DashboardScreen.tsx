@@ -61,33 +61,98 @@ function greetingFor(hour: number): string {
 
 // Parse reason_codes or evidence_summary into short chip labels
 // Prefers reason_codes array from DB; falls back to keyword scan of evidence_summary
-const REASON_LABELS: Record<string, string> = {
-  tax_delinquent:  "Tax delinquent",
-  absentee_owner:  "Absentee owner",
-  high_equity:     "High equity",
-  significant_equity: "High equity",
-  long_ownership:  "Long ownership",
-  no_listing:      "No active listing",
-  price_reduction: "Price reduction",
-  equity_gain:     "Equity gain",
-  owner_occupied:  "Owner-occupied",
-  data_stale:      "Data stale",
+const REASON_LABELS: Record<string, string | null> = {
+  // Positive signals — show as chips
+  tax_delinquent:           "Tax delinquent",
+  absentee_owner:           "Absentee owner",
+  high_equity:              "High equity",
+  significant_equity:       "High equity",
+  equity_position:          "Equity position",
+  equity_spread_detected:   "Equity spread",
+  equity_spread_favorable:  "Equity spread",
+  equity_spread_high:       "High equity spread",
+  positive_equity_spread:   "Equity spread",
+  potential_equity_position:"Equity position",
+  minimal_equity_spread:    "Low equity spread",
+  appreciation_since_purchase: "Appreciated",
+  avm_appreciation:         "AVM appreciation",
+  long_ownership:           "Long ownership",
+  long_hold_period:         "Long hold",
+  held_long_term:           "Long hold",
+  recent_acquisition:       "Recent acquisition",
+  off_market_candidate:     "Off-market candidate",
+  off_market_potential:     "Off-market potential",
+  off_market_property:      "Off-market",
+  off_market_status:        "Off-market",
+  owner_occupied:           "Owner-occupied",
+  no_active_listing:        "No active listing",
+  not_currently_listed:     "Not listed",
+  no_listing_active:        "Not listed",
+  price_reduction:          "Price reduction",
+  equity_gain:              "Equity gain",
+  // Suppress — data quality flags, not actionable signals
+  avm_missing:              null,
+  avm_unavailable:          null,
+  insufficient_data:        null,
+  list_price_missing:       null,
+  missing_avm:              null,
+  missing_avm_data:         null,
+  missing_list_price:       null,
+  missing_listing_data:     null,
+  missing_market_data:      null,
+  missing_market_signals:   null,
+  missing_market_timing:    null,
+  missing_owner_data:       null,
+  missing_ownership_data:   null,
+  missing_price:            null,
+  missing_price_signals:    null,
+  missing_pricing_data:     null,
+  missing_pricing_signals:  null,
+  missing_valuation:        null,
+  missing_valuation_data:   null,
+  no_avm_available:         null,
+  no_avm_data:              null,
+  no_avm_value:             null,
+  no_days_on_market:        null,
+  no_list_price:            null,
+  no_listing_price:         null,
+  no_listing_signals:       null,
+  no_listing_status:        null,
+  no_market_activity:       null,
+  no_market_indicators:     null,
+  no_market_signals:        null,
+  no_market_timing_data:    null,
+  no_motivation_indicators: null,
+  no_motivation_signals:    null,
+  no_owner_data:            null,
+  no_owner_type:            null,
+  no_owner_type_data:       null,
+  no_price_cuts:            null,
+  no_price_signals:         null,
+  no_pricing_signals:       null,
+  no_tax_delinquency:       null,
+  not_tax_delinquent:       null,
+  owner_type_unknown:       null,
+  price_missing:            null,
+  price_unavailable:        null,
+  stale_listing_data:       null,
+  stale_market_data:        null,
+  stale_sales_data:         null,
+  stale_transaction_data:   null,
+  aged_transaction_data:    null,
+  unknown_owner_type:       null,
 };
 
 // Condense evidence_summary into a short scannable tag line (max ~60 chars)
 // Used in the action row subtitle — not the chips, which are separate
 function reasonFrom(evidenceSummary: string, reasonCodes: string[]): string {
-  // Prefer structured reason_codes — map to display labels, join with dots
+  // Prefer structured reason_codes — suppress nulls, join with dots
   if (reasonCodes.length > 0) {
-    return reasonCodes
-      .slice(0, 3)
-      .map((c) => {
-        // Try exact match first, then title-case the raw value
-        if (REASON_LABELS[c]) return REASON_LABELS[c];
-        // e.g. "equity spread high" → "Equity spread high"
-        return c.charAt(0).toUpperCase() + c.slice(1);
-      })
-      .join(" · ");
+    const labels = reasonCodes
+      .map((c) => REASON_LABELS[c])
+      .filter((label): label is string => !!label)
+      .slice(0, 3);
+    if (labels.length > 0) return labels.join(" · ");
   }
   // Fallback: take only the first 60 chars of evidence_summary, cut at last space
   const text = evidenceSummary.trim();
@@ -100,7 +165,10 @@ function reasonFrom(evidenceSummary: string, reasonCodes: string[]): string {
 function chipsFrom(reasonCodes: string[] | null, evidenceSummary: string | null): string[] {
   // Prefer structured reason_codes from DB
   if (reasonCodes && reasonCodes.length > 0) {
-    return reasonCodes.slice(0, 3).map((c) => REASON_LABELS[c] ?? c.replace(/_/g, " "));
+    return reasonCodes
+      .map((c) => REASON_LABELS[c])           // null = suppressed, undefined = unknown
+      .filter((label): label is string => !!label) // drop nulls and unknowns
+      .slice(0, 3);
   }
   // Fallback: keyword scan of evidence_summary
   const text = (evidenceSummary ?? "").toLowerCase();
