@@ -74,6 +74,26 @@ const REASON_LABELS: Record<string, string> = {
   data_stale:      "Data stale",
 };
 
+// Condense evidence_summary into a short scannable tag line (max ~60 chars)
+// Used in the action row subtitle — not the chips, which are separate
+function reasonFrom(evidenceSummary: string, reasonCodes: string[]): string {
+  // Prefer structured reason_codes if available
+  if (reasonCodes.length > 0) {
+    return reasonCodes
+      .slice(0, 3)
+      .map((c) => REASON_LABELS[c] ?? c.replace(/_/g, " "))
+      .join(" · ");
+  }
+  // Fallback: extract first clause from evidence_summary (before first period or comma-heavy break)
+  const text = evidenceSummary.trim();
+  if (!text) return "AI scoring complete";
+  // Take up to first period
+  const firstPeriod = text.indexOf(".");
+  const clause = firstPeriod > 0 ? text.slice(0, firstPeriod) : text;
+  // Trim to 72 chars max
+  return clause.length > 72 ? clause.slice(0, 70) + "…" : clause;
+}
+
 function chipsFrom(reasonCodes: string[] | null, evidenceSummary: string | null): string[] {
   // Prefer structured reason_codes from DB
   if (reasonCodes && reasonCodes.length > 0) {
@@ -311,7 +331,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             listingId: s.listing_id,
             address:   listing?.address ?? "Unknown address",
             city:      listing?.city    ?? "",
-            reason:    s.evidence_summary ?? "AI scoring complete",
+            reason:    reasonFrom(s.evidence_summary ?? "", s.reason_codes ?? []),
             cta:       ctaFrom(tier, s.recommended_action),
             tier,
             score:     s.score,
