@@ -77,21 +77,24 @@ const REASON_LABELS: Record<string, string> = {
 // Condense evidence_summary into a short scannable tag line (max ~60 chars)
 // Used in the action row subtitle — not the chips, which are separate
 function reasonFrom(evidenceSummary: string, reasonCodes: string[]): string {
-  // Prefer structured reason_codes if available
+  // Prefer structured reason_codes — map to display labels, join with dots
   if (reasonCodes.length > 0) {
     return reasonCodes
       .slice(0, 3)
-      .map((c) => REASON_LABELS[c] ?? c.replace(/_/g, " "))
+      .map((c) => {
+        // Try exact match first, then title-case the raw value
+        if (REASON_LABELS[c]) return REASON_LABELS[c];
+        // e.g. "equity spread high" → "Equity spread high"
+        return c.charAt(0).toUpperCase() + c.slice(1);
+      })
       .join(" · ");
   }
-  // Fallback: extract first clause from evidence_summary (before first period or comma-heavy break)
+  // Fallback: take only the first 60 chars of evidence_summary, cut at last space
   const text = evidenceSummary.trim();
   if (!text) return "AI scoring complete";
-  // Take up to first period
-  const firstPeriod = text.indexOf(".");
-  const clause = firstPeriod > 0 ? text.slice(0, firstPeriod) : text;
-  // Trim to 72 chars max
-  return clause.length > 72 ? clause.slice(0, 70) + "…" : clause;
+  if (text.length <= 60) return text;
+  const cut = text.slice(0, 60).lastIndexOf(" ");
+  return text.slice(0, cut > 0 ? cut : 60) + "…";
 }
 
 function chipsFrom(reasonCodes: string[] | null, evidenceSummary: string | null): string[] {
