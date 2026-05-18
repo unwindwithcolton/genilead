@@ -26,6 +26,15 @@ interface ActionItem {
   evidenceSummary: string;
   recommendedAction: string | null;
   confidenceScore: number;
+  // Enrichment — only present when contactConfidence is high or medium
+  bestPhone:         string | null;
+  bestPhoneType:     "mobile" | "landline" | "voip" | "unknown" | null;
+  bestPhoneDnc:      boolean;
+  bestEmail:         string | null;
+  contactConfidence: "high" | "medium" | null;
+  confidenceReason:  string | null;
+  enrichedAt:        string | null;
+  canRefresh:        boolean;
 }
 
 interface UnworkedLead {
@@ -381,7 +390,11 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
           evidence_summary,
           recommended_action,
           reason_codes,
-          listings ( address, city, state, zip )
+          listings (
+            address, city, state, zip,
+            best_phone, best_email, contact_confidence,
+            enriched_at
+          )
         `)
         .order("score", { ascending: false })
         .limit(20);
@@ -400,8 +413,22 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
         // Today's actions — top 6 by score
         const items: ActionItem[] = scores.slice(0, 6).map((s) => {
           const raw     = Array.isArray(s.listings) ? s.listings[0] : s.listings;
-          const listing = raw as { address: string; city: string; state: string; zip: string } | null;
+          const listing = raw as {
+            address:            string;
+            city:               string;
+            state:              string;
+            zip:                string;
+            best_phone:         string | null;
+            best_email:         string | null;
+            contact_confidence: "high" | "medium" | "low" | "none" | null;
+            enriched_at:        string | null;
+          } | null;
           const tier    = tierFrom(s.score, s.temperature ?? "");
+          const trusted = listing?.contact_confidence === "high" || listing?.contact_confidence === "medium";
+          const daysSinceEnriched = listing?.enriched_at
+            ? (Date.now() - new Date(listing.enriched_at).getTime()) / 86_400_000
+            : null;
+
           return {
             id:        s.id,
             listingId: s.listing_id,
@@ -415,6 +442,15 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             evidenceSummary:   s.evidence_summary ?? "",
             recommendedAction: s.recommended_action ?? null,
             confidenceScore:   s.confidence_score ?? 0,
+            // Enrichment — only populated when trusted
+            bestPhone:         trusted ? (listing?.best_phone ?? null)  : null,
+            bestPhoneType:     null, // not stored on listings — available in enrichment_results if needed later
+            bestPhoneDnc:      false,
+            bestEmail:         trusted ? (listing?.best_email ?? null)  : null,
+            contactConfidence: trusted ? (listing.contact_confidence as "high" | "medium") : null,
+            confidenceReason:  null,
+            enrichedAt:        listing?.enriched_at ?? null,
+            canRefresh:        daysSinceEnriched === null || daysSinceEnriched >= 7,
           };
         });
         setActions(items);
@@ -587,6 +623,9 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                   action={selectedAction}
                   onClose={() => setSelectedAction(null)}
                   onNavigate={onNavigate}
+                  onRefreshed={(updated) => setSelectedAction((prev) =>
+                    prev ? { ...prev, ...updated } : prev
+                  )}
                 />
               )}
             </div>
@@ -763,12 +802,138 @@ function ActionRow({
   );
 }
 
+// ─── ContactSection ───────────────────────────────────────────────────────────
+
+function ContactSection({ action, onRefreshed }: {
+  action: ActionItem;
+  onRefreshed: (updated: Partial<ActionItem>) => void;
+}) {
+  const [refreshing, setRefreshing] = useState(false);
+  const [copied,     setCopied]     = useState(false);
+
+  const confidenceBadge: Record<string, React.CSSProperties> = {
+    high:   { background: "rgba(16,185,129,0.12)", color: "#10b981", border: "1px solid rgba(16,185,129,0.22)" },
+    medium: { background: "rgba(245,158,11,0.10)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.20)" },
+  };
+
+  async function handleCopy() {
+    if (!action.bestPhone) return;
+    await navigator.clipboard.writeText(action.bestPhone);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      const res  = await fetch("/api/skip-trace/refresh", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ listing_id: action.listingId }),
+      });
+      const json = await res.json();
+      if (json.ui) {
+        onRefreshed({
+          bestPhone:         json.ui.bestPhone,
+          bestEmail:         json.ui.bestEmail,
+          contactConfidence: json.ui.contactConfidence,
+          confidenceReason:  json.ui.confidenceReason,
+          enrichedAt:        json.ui.enrichedAt,
+          canRefresh:        json.ui.canRefresh,
+        });
+      }
+    } catch (err) {
+      console.error("[ContactSection] refresh failed:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  return (
+    <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55" }}>
+          Contact
+        </div>
+        {action.contactConfidence && (
+          <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 7px", borderRadius: 4, ...confidenceBadge[action.contactConfidence] }}>
+            {action.contactConfidence === "high" ? "Verified" : "Likely match"}
+          </span>
+        )}
+      </div>
+
+      {/* Phone */}
+      {action.bestPhone ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: action.bestEmail ? 8 : 0 }}>
+          <div>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: "#eceef5", letterSpacing: "0.02em" }}>
+              {action.bestPhone}
+            </div>
+            {action.bestPhoneType && (
+              <div style={{ fontSize: "10px", color: "#6b7094", marginTop: 2 }}>
+                {action.bestPhoneType}
+                {action.bestPhoneDnc && (
+                  <span style={{ marginLeft: 6, color: "#f87171", fontWeight: 700 }}>· DNC</span>
+                )}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={handleCopy}
+            style={{
+              fontSize: "10px", fontWeight: 700, padding: "4px 10px", borderRadius: 4,
+              cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
+              background: copied ? "rgba(16,185,129,0.12)" : "rgba(59,130,246,0.10)",
+              color:      copied ? "#10b981"               : "var(--accent)",
+              border:     copied ? "1px solid rgba(16,185,129,0.22)" : "1px solid rgba(59,130,246,0.22)",
+              transition: "all 0.15s",
+            }}
+          >
+            {copied ? "Copied ✓" : "Copy"}
+          </button>
+        </div>
+      ) : (
+        <div style={{ fontSize: "11px", color: "#6b7094", marginBottom: action.bestEmail ? 8 : 0 }}>
+          No phone found
+        </div>
+      )}
+
+      {/* Email */}
+      {action.bestEmail && (
+        <div style={{ fontSize: "11px", color: "#9da2ba", marginBottom: 10 }}>
+          {action.bestEmail}
+        </div>
+      )}
+
+      {/* Re-run skip trace — only when canRefresh */}
+      {action.canRefresh && (
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          style={{
+            fontSize: "10px", fontWeight: 600, padding: "4px 10px", borderRadius: 4,
+            cursor: refreshing ? "default" : "pointer", fontFamily: "inherit",
+            background: "transparent", color: "#3a3f55",
+            border: "1px solid #1a1d26",
+            opacity: refreshing ? 0.5 : 1,
+            transition: "opacity 0.15s",
+          }}
+        >
+          {refreshing ? "Refreshing…" : "Re-run skip trace"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── PulseDrawer ──────────────────────────────────────────────────────────────
 
-function PulseDrawer({ action, onClose, onNavigate }: {
+function PulseDrawer({ action, onClose, onNavigate, onRefreshed }: {
   action: ActionItem;
   onClose: () => void;
   onNavigate: (tab: Tab) => void;
+  onRefreshed: (updated: Partial<ActionItem>) => void;
 }) {
   const tierBadgeStyle: Record<string, React.CSSProperties> = {
     hot:     { background: "rgba(220,38,38,0.18)",  color: "#f87171"  },
@@ -834,6 +999,11 @@ function PulseDrawer({ action, onClose, onNavigate }: {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Contact — only when high or medium confidence */}
+        {(action.contactConfidence === "high" || action.contactConfidence === "medium") && (
+          <ContactSection action={action} onRefreshed={onRefreshed} />
         )}
 
         {/* AI Summary */}

@@ -7,6 +7,7 @@ import {
 } from "../../../lib/aiPrompts";
 import { mapListing } from "../../../lib/supabase";
 import type { Listing } from "../../../types";
+import type { SkipTraceInput } from "../../../lib/skipTrace/types";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -155,6 +156,27 @@ async function scoreOneListing(
       .insert(scoreRow);
 
     if (insertError) throw new Error(insertError.message);
+
+    // Fire-and-forget skip trace for HOT leads or score >= 60
+    // Don't await — enrichment runs in background, scoring response stays fast
+    if (scoreRow.score >= 60 || scoreRow.temperature === "HOT") {
+      const input: SkipTraceInput = {
+        listing_id: listing.id,
+        owner_name: (listing as any).owner_name ?? "",
+        address:    listing.address ?? "",
+        city:       listing.city    ?? "",
+        state:      listing.state   ?? "",
+        zip:        listing.zip     ?? "",
+      };
+
+      fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/skip-trace`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(input),
+      }).catch((err) =>
+        console.error(`[score-listings] skip-trace trigger failed listing=${listing.id}:`, err)
+      );
+    }
 
     return {
       listing_id: listing.id,
