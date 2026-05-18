@@ -605,19 +605,11 @@ function ScoreChip({ action, tierScoreStyle }: {
 }) {
   const [open, setOpen] = useState(false);
 
-  const mainScore  = action.score;
-  const intent     = Math.min(100, Math.round(mainScore * 0.92));
-  const contact    = Math.min(100, Math.round(mainScore * 0.75));
-  const fit        = Math.min(100, Math.round(mainScore * 0.88));
-  const confidence = Math.round(action.confidenceScore);
-
-  const rows = [
-    { label: "Opportunity", value: mainScore,  color: action.tier === "hot" ? "#f87171" : "#fbbf24" },
-    { label: "Intent",      value: intent,     color: "#fbbf24" },
-    { label: "Contact",     value: contact,    color: "#fbbf24" },
-    { label: "Fit",         value: fit,        color: "#9da2ba" },
-    { label: "Confidence",  value: confidence, color: "#9da2ba" },
-  ];
+  const chipColor = action.tier === "hot"
+    ? { bg: "rgba(220,38,38,0.10)", color: "#f87171", border: "1px solid rgba(220,38,38,0.18)" }
+    : action.tier === "warm"
+    ? { bg: "rgba(245,158,11,0.10)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.20)" }
+    : { bg: "rgba(255,255,255,0.05)", color: "#6b7094", border: "1px solid rgba(255,255,255,0.08)" };
 
   return (
     <div style={{ position: "relative", flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
@@ -636,32 +628,40 @@ function ScoreChip({ action, tierScoreStyle }: {
 
       {open && (
         <>
-          {/* Backdrop */}
-          <div
-            onClick={() => setOpen(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 40 }}
-          />
-          {/* Popover */}
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
           <div style={{
             position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 50,
             background: "#13151b", border: "1px solid rgba(255,255,255,0.10)",
-            borderRadius: 8, padding: "12px 14px", width: 192,
+            borderRadius: 8, padding: "12px 14px", width: 220,
             boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
           }}>
-            <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 10 }}>
-              Score breakdown
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <span style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55" }}>Why this score</span>
+              <span style={{ fontSize: "12px", fontWeight: 800, ...tierScoreStyle[action.tier], padding: "1px 7px", borderRadius: 4 }}>{action.score}</span>
             </div>
-            {rows.map((row) => (
-              <div key={row.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
-                <span style={{ fontSize: "11px", color: "#6b7094" }}>{row.label}</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <div style={{ width: 60, height: 3, background: "#1e2130", borderRadius: 2, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${row.value}%`, background: row.color, borderRadius: 2 }} />
-                  </div>
-                  <span style={{ fontSize: "11px", fontWeight: 800, color: row.color, minWidth: 22, textAlign: "right" }}>{row.value}</span>
-                </div>
+
+            {/* Reason chips */}
+            {action.chips.length > 0 ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+                {action.chips.map((chip) => (
+                  <span key={chip} style={{ fontSize: "10px", fontWeight: 700, padding: "2px 7px", borderRadius: 4, background: chipColor.bg, color: chipColor.color, border: chipColor.border }}>
+                    {chip}
+                  </span>
+                ))}
               </div>
-            ))}
+            ) : null}
+
+            {/* Evidence summary */}
+            {action.evidenceSummary ? (
+              <div style={{ fontSize: "11px", color: "#6b7094", lineHeight: 1.55, borderTop: action.chips.length > 0 ? "1px solid rgba(255,255,255,0.05)" : "none", paddingTop: action.chips.length > 0 ? 9 : 0 }}>
+                {action.evidenceSummary.length > 120
+                  ? action.evidenceSummary.slice(0, action.evidenceSummary.lastIndexOf(" ", 120)) + "…"
+                  : action.evidenceSummary}
+              </div>
+            ) : (
+              <div style={{ fontSize: "11px", color: "#3a3f55" }}>No evidence summary available.</div>
+            )}
           </div>
         </>
       )}
