@@ -778,14 +778,27 @@ function PulseDrawer({ action, onClose, onNavigate }: {
 
         {/* Last activity */}
         <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>Last activity</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55" }}>Last activity</div>
+            <button
+              onClick={() => onNavigate("inbox")}
+              style={{ fontSize: "10px", fontWeight: 600, color: "var(--accent)", background: "none", border: "1px solid rgba(59,130,246,0.22)", borderRadius: 4, padding: "2px 8px", cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Open in Inbox →
+            </button>
+          </div>
+          {/* Max 3 activity bullets — static until outreach_log FK wired */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#252836", flexShrink: 0 }} />
             <span style={{ fontSize: "11px", color: "#6b7094" }}>No outreach logged — <span style={{ color: "#9da2ba" }}>never contacted</span></span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--success)", flexShrink: 0 }} />
             <span style={{ fontSize: "11px", color: "#6b7094" }}>Score updated <span style={{ color: "#9da2ba" }}>today, 6:31 AM</span></span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#252836", flexShrink: 0 }} />
+            <span style={{ fontSize: "11px", color: "#6b7094" }}>Ingested <span style={{ color: "#9da2ba" }}>this morning</span></span>
           </div>
         </div>
 
