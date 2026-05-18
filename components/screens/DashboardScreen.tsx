@@ -23,6 +23,8 @@ interface ActionItem {
   tier: "hot" | "warm" | "nurture";
   score: number;
   chips: string[];
+  evidenceSummary: string;
+  recommendedAction: string | null;
 }
 
 interface UnworkedLead {
@@ -349,7 +351,8 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   const [unworked, setUnworked] = useState<UnworkedLead[]>([]);
   const [metrics,  setMetrics]  = useState({ hot: 0, total: 0, missedSla: 3 });
   const [loading,  setLoading]  = useState(true);
-  const [userName, setUserName] = useState<string>("");
+  const [userName,        setUserName]        = useState<string>("");
+  const [selectedAction,  setSelectedAction]  = useState<ActionItem | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -403,10 +406,12 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             address:   listing?.address ?? "Unknown address",
             city:      listing?.city    ?? "",
             reason:    reasonFrom(s.evidence_summary ?? "", s.reason_codes ?? []),
-            cta:       ctaFrom(tier, s.recommended_action),
+            cta:               ctaFrom(tier, s.recommended_action),
             tier,
-            score:     s.score,
-            chips:     chipsFrom(s.reason_codes ?? null, s.evidence_summary ?? null),
+            score:             s.score,
+            chips:             chipsFrom(s.reason_codes ?? null, s.evidence_summary ?? null),
+            evidenceSummary:   s.evidence_summary ?? "",
+            recommendedAction: s.recommended_action ?? null,
           };
         });
         setActions(items);
@@ -602,63 +607,69 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
               />
             </div>
 
-            {/* ── Today's Pulse — full width main event ────────────────────── */}
-            <div>
+            {/* ── Today's Pulse + slide-in drawer ──────────────────────────── */}
+            <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--border)" }}>
 
-              {/* ── Today's Pulse ──────────────────────────────────────────── */}
-              <Panel>
-                <PanelHead>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#8b90a8" }}>
-                      ⚡ Today&apos;s Pulse
-                    </span>
-                    {urgentCount > 0 && (
-                      <span style={{
-                        fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 6,
-                        background: "rgba(220,38,38,0.18)", color: "var(--hot)",
-                      }}>
-                        {urgentCount} urgent
+              {/* Pulse list — compresses when drawer is open */}
+              <div style={{ flex: selectedAction ? "0 0 52%" : "1 1 100%", transition: "flex-basis 0.3s cubic-bezier(0.4,0,0.2,1)", minWidth: 0, overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-surface)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#8b90a8" }}>
+                        ⚡ Today&apos;s Pulse
                       </span>
-                    )}
+                      {urgentCount > 0 && (
+                        <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 6, background: "rgba(220,38,38,0.18)", color: "var(--hot)" }}>
+                          {urgentCount} urgent
+                        </span>
+                      )}
+                    </div>
+                    <button onClick={() => onNavigate("opportunities")} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "10.5px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                      View all →
+                    </button>
                   </div>
-                  <button onClick={() => onNavigate("opportunities")} style={{
-                    background: "none", border: "none", color: "var(--accent)",
-                    fontSize: "10.5px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-                  }}>
-                    View all →
-                  </button>
-                </PanelHead>
 
-                {actions.length === 0 ? (
-                  <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px" }}>
-                    No scored leads yet. Ingest runs daily at 6:00 AM.
-                  </div>
-                ) : (
-                  <div>
-                    {actions.map((action, i) => {
-                      // Insert tier divider before first nurture row
-                      const prevTier = i > 0 ? actions[i - 1].tier : null;
-                      const showDivider = action.tier === "nurture" && prevTier !== "nurture";
+                  {actions.length === 0 ? (
+                    <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px" }}>
+                      No scored leads yet. Ingest runs daily at 6:00 AM.
+                    </div>
+                  ) : (
+                    <div>
+                      {actions.map((action, i) => {
+                        const prevTier   = i > 0 ? actions[i - 1].tier : null;
+                        const showDivider = action.tier === "nurture" && prevTier !== "nurture";
+                        const isSelected  = selectedAction?.id === action.id;
+                        return (
+                          <ActionRow
+                            key={action.id}
+                            action={action}
+                            isLast={i === actions.length - 1}
+                            showDivider={showDivider}
+                            isSelected={isSelected}
+                            tierBorderColor={tierBorderColor}
+                            tierHoverBg={tierHoverBg}
+                            tierHoverBorder={tierHoverBorder}
+                            tierTagColor={tierTagColor}
+                            tierScoreStyle={tierScoreStyle}
+                            tierCtaStyle={tierCtaStyle}
+                            onNavigate={onNavigate}
+                            onSelect={() => setSelectedAction(isSelected ? null : action)}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                      return (
-                        <ActionRow
-                          key={action.id}
-                          action={action}
-                          isLast={i === actions.length - 1}
-                          showDivider={showDivider}
-                          tierBorderColor={tierBorderColor}
-                          tierHoverBg={tierHoverBg}
-                          tierHoverBorder={tierHoverBorder}
-                          tierTagColor={tierTagColor}
-                          tierScoreStyle={tierScoreStyle}
-                          tierCtaStyle={tierCtaStyle}
-                          onNavigate={onNavigate}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-              </Panel>
+              {/* Drawer — expands from the right */}
+              {selectedAction && (
+                <PulseDrawer
+                  action={selectedAction}
+                  onClose={() => setSelectedAction(null)}
+                  onNavigate={onNavigate}
+                />
+              )}
             </div>
           </>
         )}
@@ -670,14 +681,15 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
 // ─── ActionRow — extracted to keep JSX above readable ─────────────────────────
 
 function ActionRow({
-  action, isLast, showDivider,
+  action, isLast, showDivider, isSelected,
   tierBorderColor, tierHoverBg, tierHoverBorder,
   tierTagColor, tierScoreStyle, tierCtaStyle,
-  onNavigate,
+  onNavigate, onSelect,
 }: {
   action: ActionItem;
   isLast: boolean;
   showDivider: boolean;
+  isSelected: boolean;
   tierBorderColor: Record<string, string>;
   tierHoverBg: Record<string, string>;
   tierHoverBorder: Record<string, string>;
@@ -685,6 +697,7 @@ function ActionRow({
   tierScoreStyle: Record<string, React.CSSProperties>;
   tierCtaStyle: Record<string, React.CSSProperties>;
   onNavigate: (tab: Tab) => void;
+  onSelect: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -692,15 +705,19 @@ function ActionRow({
     <>
       {showDivider && <TierDivider label="Nurture queue" />}
       <div
-        onClick={() => onNavigate("opportunities")}
+        onClick={onSelect}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
           display: "flex", alignItems: "center", gap: 12,
           padding: "14px 16px",
           borderBottom: isLast ? "none" : "1px solid var(--bg-base)",
-          borderLeft: `3px solid ${hovered ? tierHoverBorder[action.tier] : tierBorderColor[action.tier]}`,
-          background: hovered ? tierHoverBg[action.tier] : "transparent",
+          borderLeft: isSelected
+            ? "3px solid var(--accent)"
+            : `3px solid ${hovered ? tierHoverBorder[action.tier] : tierBorderColor[action.tier]}`,
+          background: isSelected
+            ? "rgba(59,130,246,0.07)"
+            : hovered ? tierHoverBg[action.tier] : "transparent",
           cursor: "pointer",
           transition: "background 0.1s, border-left-color 0.1s",
         }}
@@ -759,6 +776,139 @@ function ActionRow({
         </button>
       </div>
     </>
+  );
+}
+
+// ─── PulseDrawer ──────────────────────────────────────────────────────────────
+
+function PulseDrawer({ action, onClose, onNavigate }: {
+  action: ActionItem;
+  onClose: () => void;
+  onNavigate: (tab: Tab) => void;
+}) {
+  const tierBadgeStyle: Record<string, React.CSSProperties> = {
+    hot:     { background: "rgba(220,38,38,0.18)",  color: "#f87171"  },
+    warm:    { background: "rgba(245,158,11,0.14)",  color: "#fbbf24"  },
+    nurture: { background: "rgba(255,255,255,0.06)", color: "#6b7094"  },
+  };
+  const recBorderColor: Record<string, string> = {
+    hot:     "rgba(220,38,38,0.22)",
+    warm:    "rgba(245,158,11,0.18)",
+    nurture: "rgba(255,255,255,0.07)",
+  };
+  const primaryCtaStyle: Record<string, React.CSSProperties> = {
+    hot:     { background: "#dc2626", color: "#fff", border: "none" },
+    warm:    { background: "transparent", color: "var(--warm)", border: "1.5px solid rgba(245,158,11,0.40)" },
+    nurture: { background: "transparent", color: "#5a6080", border: "1.5px solid #252836" },
+  };
+
+  return (
+    <div style={{
+      flex: "0 0 48%",
+      borderLeft: "1px solid var(--border)",
+      background: "#0f1118",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      animation: "drawerSlideIn 0.3s cubic-bezier(0.4,0,0.2,1)",
+    }}>
+      <style>{`
+        @keyframes drawerSlideIn {
+          from { opacity: 0; transform: translateX(18px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
+
+      {/* Header */}
+      <div style={{ background: "#0b0d11", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "12px 16px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0 }}>
+        <div>
+          <div style={{ fontSize: "13px", fontWeight: 800, color: "#eceef5", letterSpacing: "0.01em", marginBottom: 5 }}>
+            {action.address}{action.city ? `, ${action.city}` : ""}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 7px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.05em", ...tierBadgeStyle[action.tier] }}>
+              {action.tier.toUpperCase()}
+            </span>
+            <span style={{ fontSize: "11px", fontWeight: 800, color: "#6b7094" }}>Score {action.score}</span>
+          </div>
+        </div>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "#3a3f55", cursor: "pointer", fontSize: "16px", lineHeight: 1, padding: 0, fontFamily: "inherit" }}>✕</button>
+      </div>
+
+      {/* Scrollable body */}
+      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+
+        {/* AI Summary */}
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>AI Summary</div>
+          <div style={{ fontSize: "11.5px", color: "#9da2ba", lineHeight: 1.6, background: "#13151b", borderLeft: "3px solid rgba(59,130,246,0.4)", padding: "10px 12px" }}>
+            {action.evidenceSummary || "AI scoring complete. No summary available."}
+          </div>
+        </div>
+
+        {/* Why it surfaced */}
+        {action.chips.length > 0 && (
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+            <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>Why it surfaced</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {action.chips.map((chip) => (
+                <span key={chip} style={{ fontSize: "10px", fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: action.tier === "hot" ? "rgba(220,38,38,0.10)" : "rgba(245,158,11,0.10)", color: action.tier === "hot" ? "#f87171" : "#fbbf24", border: action.tier === "hot" ? "1px solid rgba(220,38,38,0.18)" : "1px solid rgba(245,158,11,0.20)" }}>
+                  {chip}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recommended action */}
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>Recommended action</div>
+          <div style={{ background: "#13151b", border: `1px solid ${recBorderColor[action.tier]}`, borderRadius: 6, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: action.tier === "hot" ? "#f87171" : action.tier === "warm" ? "#fbbf24" : "#6b7094" }}>{action.cta}</div>
+              <div style={{ fontSize: "10.5px", color: "#6b7094", marginTop: 3 }}>
+                {action.recommendedAction ?? "Based on score and tier"}
+              </div>
+            </div>
+            <div style={{ fontSize: "22px", fontWeight: 800, color: action.tier === "hot" ? "#f87171" : action.tier === "warm" ? "#fbbf24" : "#4a5070" }}>{action.score}</div>
+          </div>
+        </div>
+
+        {/* Last activity */}
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>Last activity</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#252836", flexShrink: 0 }} />
+            <span style={{ fontSize: "11px", color: "#6b7094" }}>No outreach logged — <span style={{ color: "#9da2ba" }}>never contacted</span></span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--success)", flexShrink: 0 }} />
+            <span style={{ fontSize: "11px", color: "#6b7094" }}>Score updated <span style={{ color: "#9da2ba" }}>today, 6:31 AM</span></span>
+          </div>
+        </div>
+
+        {/* Quick actions */}
+        <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <button style={{ fontSize: "11px", fontWeight: 700, padding: "8px 13px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", ...primaryCtaStyle[action.tier] }}>
+            {action.cta}
+          </button>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+            <button style={{ fontSize: "11px", fontWeight: 700, padding: "7px 10px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#9da2ba", border: "1.5px solid rgba(255,255,255,0.10)" }}>Text today</button>
+            <button style={{ fontSize: "11px", fontWeight: 700, padding: "7px 10px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#9da2ba", border: "1.5px solid rgba(255,255,255,0.10)" }}>Mark handled</button>
+          </div>
+          <button style={{ fontSize: "11px", fontWeight: 700, padding: "7px 13px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#4a5070", border: "1.5px solid #1e2130" }}>
+            Send to nurture
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ padding: "10px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+        <button onClick={() => onNavigate("opportunities")} style={{ fontSize: "10.5px", fontWeight: 600, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+          Open full record in Opportunities →
+        </button>
+      </div>
+    </div>
   );
 }
 
