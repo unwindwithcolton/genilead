@@ -481,39 +481,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-      {/* ── Topbar ─────────────────────────────────────────────────────────── */}
-      <div style={{
-        height: "var(--topbar-height)",
-        minHeight: "var(--topbar-height)",
-        display: "flex",
-        alignItems: "center",
-        padding: "0 32px",
-        borderBottom: "1px solid var(--border)",
-        background: "var(--bg-surface)",
-        gap: "12px",
-      }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ fontSize: "15px", fontWeight: 700, letterSpacing: "-0.01em", color: "var(--text-primary)" }}>
-            {greeting}{userName ? `, ${userName}` : ""}
-          </div>
-          <div style={{ fontSize: "11px" }}>
-            {urgentCount > 0
-              ? <><span style={{ color: "var(--hot)", fontWeight: 700 }}>{urgentCount} urgent {urgentCount === 1 ? "lead" : "leads"}</span><span style={{ color: "var(--text-muted)" }}> need action · {todayStr}</span></>
-              : <span style={{ color: "var(--text-muted)" }}>{todayStr}</span>
-            }
-          </div>
-        </div>
-        <div style={{
-          marginLeft: "auto",
-          display: "flex", alignItems: "center", gap: "7px",
-          fontSize: "11px", color: "var(--text-muted)",
-          background: "var(--bg-base)", border: "1px solid var(--border)",
-          padding: "5px 14px", borderRadius: "999px",
-        }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--success)", flexShrink: 0 }} />
-          Last ingest 6:31 AM · zip 90210
-        </div>
-      </div>
+      
 
       {/* ── Scrollable content ─────────────────────────────────────────────── */}
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px", display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -521,59 +489,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
           <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Loading...</div>
         ) : (
           <>
-            {/* ── AI Brief — compact inline one-liner ──────────────────────── */}
-            <div style={{
-              background: "linear-gradient(92deg, rgba(59,111,240,0.08) 0%, rgba(59,111,240,0.02) 100%)",
-              border: "1px solid rgba(59,111,240,0.18)",
-              borderRadius: "var(--r-md)",
-              padding: "11px 15px",
-              display: "flex", alignItems: "center", gap: 12,
-            }}>
-              {/* Icon */}
-              <div style={{
-                width: 28, height: 28, borderRadius: 6, flexShrink: 0,
-                background: "rgba(59,111,240,0.14)", border: "1px solid rgba(59,111,240,0.25)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
-                </svg>
-              </div>
-              {/* Text — inline label + brief copy */}
-              <div style={{ flex: 1, fontSize: "12px", color: "#9da2ba", lineHeight: 1.5 }}>
-                <span style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent)", marginRight: 8 }}>
-                  AI Brief
-                </span>
-                {urgentCount > 0 ? (
-                  <>
-                    <span style={{ color: "#dde0ec", fontWeight: 600 }}>{urgentCount} HOT {urgentCount === 1 ? "lead needs" : "leads need"} a call — </span>
-                    tax delinquent, absentee-owned, high equity.
-                    {unworked.length > 0 && (
-                      <> <span style={{ color: "#dde0ec", fontWeight: 600 }}>{unworked.length} unworked leads ≥ 40</span> with no outreach on record.</>
-                    )}
-                  </>
-                ) : (
-                  <>No urgent leads today. <span style={{ color: "#dde0ec", fontWeight: 600 }}>{metrics.total} active leads</span> across your zips — good time to work the warm pipeline.</>
-                )}
-              </div>
-              {/* Actions */}
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                <button style={{
-                  fontSize: "10px", color: "#3a3f55", background: "none",
-                  border: "1px solid var(--border)", borderRadius: 4,
-                  padding: "4px 9px", cursor: "pointer", fontFamily: "inherit",
-                }}>
-                  ↻ Regenerate
-                </button>
-                <button onClick={() => onNavigate("opportunities")} style={{
-                  fontSize: "10px", color: "var(--accent)", background: "none",
-                  border: "none", padding: "4px 0", cursor: "pointer",
-                  fontFamily: "inherit", fontWeight: 600,
-                }}>
-                  View all →
-                </button>
-              </div>
-            </div>
+            
 
             {/* ── KPI row — all 4 cards operational ───────────────────────── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
