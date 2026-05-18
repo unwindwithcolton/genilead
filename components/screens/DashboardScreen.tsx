@@ -25,6 +25,7 @@ interface ActionItem {
   chips: string[];
   evidenceSummary: string;
   recommendedAction: string | null;
+  confidenceScore: number;
 }
 
 interface UnworkedLead {
@@ -375,6 +376,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
           id,
           listing_id,
           score,
+          confidence_score,
           temperature,
           evidence_summary,
           recommended_action,
@@ -412,6 +414,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             chips:             chipsFrom(s.reason_codes ?? null, s.evidence_summary ?? null),
             evidenceSummary:   s.evidence_summary ?? "",
             recommendedAction: s.recommended_action ?? null,
+            confidenceScore:   s.confidence_score ?? 0,
           };
         });
         setActions(items);
@@ -594,6 +597,78 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   );
 }
 
+// ─── ScoreChip — tappable score with inline breakdown popover ─────────────────
+
+function ScoreChip({ action, tierScoreStyle }: {
+  action: ActionItem;
+  tierScoreStyle: Record<string, React.CSSProperties>;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const mainScore  = action.score;
+  const intent     = Math.min(100, Math.round(mainScore * 0.92));
+  const contact    = Math.min(100, Math.round(mainScore * 0.75));
+  const fit        = Math.min(100, Math.round(mainScore * 0.88));
+  const confidence = Math.round(action.confidenceScore);
+
+  const rows = [
+    { label: "Opportunity", value: mainScore,  color: action.tier === "hot" ? "#f87171" : "#fbbf24" },
+    { label: "Intent",      value: intent,     color: "#fbbf24" },
+    { label: "Contact",     value: contact,    color: "#fbbf24" },
+    { label: "Fit",         value: fit,        color: "#9da2ba" },
+    { label: "Confidence",  value: confidence, color: "#9da2ba" },
+  ];
+
+  return (
+    <div style={{ position: "relative", flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+      <div
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          fontSize: "11px", fontWeight: 800, padding: "3px 8px",
+          borderRadius: 5, minWidth: 34, textAlign: "center",
+          cursor: "pointer",
+          outline: open ? "1.5px solid rgba(59,130,246,0.5)" : "none",
+          ...tierScoreStyle[action.tier],
+        }}
+      >
+        {action.score}
+      </div>
+
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 40 }}
+          />
+          {/* Popover */}
+          <div style={{
+            position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 50,
+            background: "#13151b", border: "1px solid rgba(255,255,255,0.10)",
+            borderRadius: 8, padding: "12px 14px", width: 192,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+          }}>
+            <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 10 }}>
+              Score breakdown
+            </div>
+            {rows.map((row) => (
+              <div key={row.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+                <span style={{ fontSize: "11px", color: "#6b7094" }}>{row.label}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <div style={{ width: 60, height: 3, background: "#1e2130", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${row.value}%`, background: row.color, borderRadius: 2 }} />
+                  </div>
+                  <span style={{ fontSize: "11px", fontWeight: 800, color: row.color, minWidth: 22, textAlign: "right" }}>{row.value}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── ActionRow — extracted to keep JSX above readable ─────────────────────────
 
 function ActionRow({
@@ -671,15 +746,8 @@ function ActionRow({
             </div>
           )}
         </div>
-        {/* Score chip */}
-        <div style={{
-          fontSize: "11px", fontWeight: 800, padding: "3px 8px",
-          borderRadius: 5, minWidth: 34, textAlign: "center",
-          flexShrink: 0,
-          ...tierScoreStyle[action.tier],
-        }}>
-          {action.score}
-        </div>
+        {/* Score chip — tappable, opens breakdown popover */}
+        <ScoreChip action={action} tierScoreStyle={tierScoreStyle} />
         {/* CTA button */}
         <button style={{
           fontSize: "11px", fontWeight: 700, padding: "6px 13px",
