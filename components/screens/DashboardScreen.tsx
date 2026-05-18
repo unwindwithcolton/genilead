@@ -754,14 +754,6 @@ function PulseDrawer({ action, onClose, onNavigate }: {
       {/* Scrollable body */}
       <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
 
-        {/* AI Summary */}
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>AI Summary</div>
-          <div style={{ fontSize: "11.5px", color: "#9da2ba", lineHeight: 1.6, background: "#13151b", borderLeft: "3px solid rgba(59,130,246,0.4)", padding: "10px 12px" }}>
-            {action.evidenceSummary || "AI scoring complete. No summary available."}
-          </div>
-        </div>
-
         {/* Why it surfaced */}
         {action.chips.length > 0 && (
           <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
@@ -776,17 +768,11 @@ function PulseDrawer({ action, onClose, onNavigate }: {
           </div>
         )}
 
-        {/* Recommended action */}
+        {/* AI Summary */}
         <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>Recommended action</div>
-          <div style={{ background: "#13151b", border: `1px solid ${recBorderColor[action.tier]}`, borderRadius: 6, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <div style={{ fontSize: "12px", fontWeight: 700, color: action.tier === "hot" ? "#f87171" : action.tier === "warm" ? "#fbbf24" : "#6b7094" }}>{action.cta}</div>
-              <div style={{ fontSize: "10.5px", color: "#6b7094", marginTop: 3 }}>
-                {action.recommendedAction ?? "Based on score and tier"}
-              </div>
-            </div>
-            <div style={{ fontSize: "22px", fontWeight: 800, color: action.tier === "hot" ? "#f87171" : action.tier === "warm" ? "#fbbf24" : "#4a5070" }}>{action.score}</div>
+          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>AI Summary</div>
+          <div style={{ fontSize: "11.5px", color: "#9da2ba", lineHeight: 1.6, background: "#13151b", borderLeft: "3px solid rgba(59,130,246,0.4)", padding: "10px 12px" }}>
+            {action.evidenceSummary || "AI scoring complete. No summary available."}
           </div>
         </div>
 
@@ -803,16 +789,16 @@ function PulseDrawer({ action, onClose, onNavigate }: {
           </div>
         </div>
 
-        {/* Quick actions */}
+        {/* Primary CTA + secondary actions */}
         <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
-          <button style={{ fontSize: "11px", fontWeight: 700, padding: "8px 13px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", ...primaryCtaStyle[action.tier] }}>
+          <button style={{ fontSize: "12px", fontWeight: 700, padding: "9px 13px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", ...primaryCtaStyle[action.tier] }}>
             {action.cta}
           </button>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-            <button style={{ fontSize: "11px", fontWeight: 700, padding: "7px 10px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#9da2ba", border: "1.5px solid rgba(255,255,255,0.10)" }}>Text today</button>
-            <button style={{ fontSize: "11px", fontWeight: 700, padding: "7px 10px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#9da2ba", border: "1.5px solid rgba(255,255,255,0.10)" }}>Mark handled</button>
+            <button style={{ fontSize: "11px", fontWeight: 600, padding: "7px 10px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#6b7094", border: "1.5px solid rgba(255,255,255,0.07)" }}>Text today</button>
+            <button style={{ fontSize: "11px", fontWeight: 600, padding: "7px 10px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#6b7094", border: "1.5px solid rgba(255,255,255,0.07)" }}>Mark handled</button>
           </div>
-          <button style={{ fontSize: "11px", fontWeight: 700, padding: "7px 13px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#4a5070", border: "1.5px solid #1e2130" }}>
+          <button style={{ fontSize: "11px", fontWeight: 600, padding: "7px 13px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#3a3f55", border: "1.5px solid #1a1d26" }}>
             Send to nurture
           </button>
         </div>
