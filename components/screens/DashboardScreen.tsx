@@ -594,27 +594,23 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                 sub="Across active zips"
                 variant="neutral"
               />
-              {/* Avg Score replaced with Missed SLA — more operational */}
-              {/* TODO: wire to real outreach_log data when listing_id FK exists */}
               <KpiCard
-                label="Missed SLA"
-                value={metrics.missedSla}
-                sub="No response in window"
-                variant="pink"
-                pulse
-                onClick={metrics.missedSla > 0 ? () => onNavigate("opportunities") : undefined}
+                label="Active Zips"
+                value="1"
+                sub="zip 90210"
+                variant="neutral"
               />
             </div>
 
-            {/* ── Golden ratio grid ─────────────────────────────────────────── */}
-            <div style={{ display: "grid", gridTemplateColumns: "1.618fr 1fr", gap: 16, alignItems: "start" }}>
+            {/* ── Today's Pulse — full width main event ────────────────────── */}
+            <div>
 
-              {/* ── LEFT: Today's actions ──────────────────────────────────── */}
+              {/* ── Today's Pulse ──────────────────────────────────────────── */}
               <Panel>
                 <PanelHead>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#8b90a8" }}>
-                      ⚡ Today&apos;s Actions
+                      ⚡ Today&apos;s Pulse
                     </span>
                     {urgentCount > 0 && (
                       <span style={{
@@ -663,98 +659,6 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                   </div>
                 )}
               </Panel>
-
-              {/* ── RIGHT: stacked column ──────────────────────────────────── */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-
-                {/* Money left on the table */}
-                <Panel amberBorder>
-                  <div style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "10px 15px",
-                    borderBottom: "1px solid rgba(245,158,11,0.10)",
-                  }}>
-                    <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--warm)" }}>
-                      ◈ Money Left on the Table
-                    </span>
-                    <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 6, background: "rgba(245,158,11,0.14)", color: "var(--warm)" }}>
-                      {unworked.length} unworked
-                    </span>
-                  </div>
-                  {unworked.length === 0 ? (
-                    <div style={{ padding: "16px 15px", fontSize: "12px", color: "var(--text-muted)" }}>
-                      All scored leads have been worked. Nice.
-                    </div>
-                  ) : (
-                    <>
-                      {unworked.map((lead, i) => (
-                        <MoneyRow
-                          key={lead.id}
-                          lead={lead}
-                          isLast={i === unworked.length - 1}
-                          onNavigate={onNavigate}
-                        />
-                      ))}
-                      {/* Footer CTA */}
-                      <div style={{
-                        display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "9px 15px",
-                        borderTop: "1px solid rgba(245,158,11,0.10)",
-                      }}>
-                        <button onClick={() => onNavigate("opportunities")} style={{
-                          fontSize: "11px", fontWeight: 700, color: "var(--warm)",
-                          background: "none", border: "none", cursor: "pointer", fontFamily: "inherit",
-                        }}>
-                          View in Opportunities →
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </Panel>
-
-                {/* Response SLA */}
-                <Panel>
-                  <PanelHead>
-                    <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#8b90a8" }}>
-                      ⏱ Response SLA
-                    </span>
-                  </PanelHead>
-                  <div style={{ padding: "12px 15px", display: "flex", flexDirection: "column", gap: 10 }}>
-                    {[
-                      { label: "Within 1 hour",  val: "67%", fill: 67, color: "var(--success)" },
-                      { label: "Within 4 hours", val: "82%", fill: 82, color: "var(--warm)"    },
-                    ].map((row) => (
-                      <div key={row.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: "11px", color: "#7a7f96" }}>{row.label}</span>
-                          <span style={{ fontSize: "11px", fontWeight: 800, color: row.color }}>{row.val}</span>
-                        </div>
-                        <div style={{ height: 4, background: "var(--bg-card)", borderRadius: 2, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${row.fill}%`, background: row.color, borderRadius: 2 }} />
-                        </div>
-                      </div>
-                    ))}
-                    {/* Missed SLA warning box */}
-                    <SlaWarningBox count={metrics.missedSla} onClick={() => onNavigate("opportunities")} />
-                  </div>
-                </Panel>
-
-                {/* Signals & alerts */}
-                <Panel>
-                  <PanelHead>
-                    <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#8b90a8" }}>
-                      ◉ Signals &amp; Alerts
-                    </span>
-                    <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 6, background: "var(--bg-card)", color: "var(--text-muted)" }}>
-                      Last 24h
-                    </span>
-                  </PanelHead>
-                  {actions.slice(0, 3).map((a, i) => (
-                    <SignalRow key={a.id} action={a} isLast={i === Math.min(actions.length, 3) - 1} onNavigate={onNavigate} />
-                  ))}
-                </Panel>
-
-              </div>
             </div>
           </>
         )}
