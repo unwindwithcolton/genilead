@@ -942,119 +942,81 @@ export default function OutreachScreen() {
           </div>
         </div>
 
-        {/* AI + Composer — unified zone */}
-        <div style={{ background: "#0e1320", borderBottom: "1px solid rgba(59,130,246,0.15)", padding: "12px 18px 0", flexShrink: 0 }}>
+        {/* ══ COMPOSE CARD ══ */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 18px", gap: 0, background: "var(--bg-base)", overflow: "hidden" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--bg-card)", borderRadius: "var(--r-md)", border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
 
-          {/* Signal chips + regenerate */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <IcoStar />
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {lead.aiSignals.map(s => (
-                  <span key={s} style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 3, background: "rgba(59,130,246,0.1)", color: "#93c5fd", border: "1px solid rgba(59,130,246,0.18)" }}>
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={handleRegenerate}
-              style={{ fontSize: 10, color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 3, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", fontFamily: "var(--font-ui)", transition: "color .1s", flexShrink: 0 }}
-              onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
-              onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
-            >
-              <IcoRegen /> Regenerate
-            </button>
-          </div>
-
-          {/* Unified card: AI suggestion flows into editable draft */}
-          <div style={{ background: "#111827", borderRadius: "var(--r-md) var(--r-md) 0 0", border: "1px solid rgba(59,130,246,0.24)", borderBottom: "none", borderLeft: "3px solid var(--accent)", overflow: "hidden" }}>
-
-            {/* AI suggested text — tap to use */}
-            <div
-              onClick={() => setDraft(lead.aiOpening.replace(/^"|"$/g, ""))}
-              style={{ padding: "10px 14px 9px", borderBottom: "1px solid rgba(59,130,246,0.12)", cursor: "pointer" }}
-              title="Click to use as draft"
-            >
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.6px", color: "#4a7aaa", textTransform: "uppercase", marginBottom: 5 }}>AI suggestion — click to use</div>
-              <div style={{ fontSize: 12.5, color: "#8ba8cc", lineHeight: 1.6, fontStyle: "italic" }}>
-                {lead.aiOpening}
-              </div>
-            </div>
-
-            {/* Tabs sit inside the card */}
-            <div style={{ display: "flex", padding: "0 14px", background: "rgba(0,0,0,0.15)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            {/* 1 — Channel tabs */}
+            <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
               {(["SMS", "Email", "Call script"] as ComposerTab[]).map(tab => (
                 <button
                   key={tab}
                   onClick={() => handleTabChange(tab)}
-                  style={{ padding: "7px 12px", fontSize: 11, fontWeight: 500, color: activeTab === tab ? "#60a5fa" : "var(--text-muted)", background: "transparent", border: "none", borderBottom: activeTab === tab ? "2px solid var(--accent)" : "2px solid transparent", cursor: "pointer", fontFamily: "var(--font-ui)", transition: "color .1s" }}
+                  style={{ padding: "9px 16px", fontSize: 12, fontWeight: 500, color: activeTab === tab ? "#60a5fa" : "var(--text-muted)", background: "transparent", border: "none", borderBottom: activeTab === tab ? "2px solid var(--accent)" : "2px solid transparent", cursor: "pointer", fontFamily: "var(--font-ui)", transition: "color .1s" }}
                 >
                   {tab}
                 </button>
               ))}
-              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
-                <button
-                  onClick={() => setDraft("")}
-                  style={{ fontSize: 10, color: "var(--text-muted)", cursor: "pointer", padding: "1px 6px", borderRadius: 3, border: "none", background: "transparent", fontFamily: "var(--font-ui)" }}
-                >
-                  Clear
-                </button>
-              </div>
             </div>
 
-            {/* Editable draft */}
+            {/* 2 — AI suggestion strip */}
+            <div style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)", flexShrink: 0, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+              <div
+                onClick={() => setDraft(lead.aiOpening.replace(/^"|"$/g, ""))}
+                style={{ flex: 1, cursor: "pointer" }}
+                title="Click to use"
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                  <IcoStar />
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.5px", color: "#4a7aaa", textTransform: "uppercase" }}>AI suggestion — click to use</span>
+                </div>
+                <div style={{ fontSize: 12, color: "#7a99bb", lineHeight: 1.55, fontStyle: "italic" }}>
+                  {lead.aiOpening}
+                </div>
+              </div>
+              <button
+                onClick={handleRegenerate}
+                style={{ fontSize: 10, color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, padding: "3px 8px", borderRadius: 4, border: "1px solid rgba(255,255,255,0.07)", background: "transparent", fontFamily: "var(--font-ui)", flexShrink: 0, transition: "color .1s" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
+                onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
+              >
+                <IcoRegen /> Regen
+              </button>
+            </div>
+
+            {/* 3 — Editable message box */}
             <textarea
               value={regenerating ? "" : draft}
               onChange={e => setDraft(e.target.value)}
               placeholder={regenerating ? "Regenerating…" : "Edit your message…"}
-              style={{ width: "100%", background: "transparent", border: "none", padding: "10px 14px 14px", fontSize: 13, color: "#e0e4f0", fontFamily: "var(--font-ui)", resize: "none", height: 110, lineHeight: 1.75, outline: "none", boxSizing: "border-box" }}
+              style={{ flex: 1, width: "100%", background: "transparent", border: "none", padding: "12px 14px", fontSize: 13, color: "#e0e4f0", fontFamily: "var(--font-ui)", resize: "none", lineHeight: 1.75, outline: "none", boxSizing: "border-box", minHeight: 100 }}
             />
-          </div>
-        </div>
 
-        {/* Composer body — sequence + templates collapsed */}
-        <div style={{ flex: 1, overflowY: "auto", background: "var(--bg-base)" }}>
-
-          {/* Sequence + Templates — collapsible sub-panel */}
-          <SequenceTemplatePanel
-            lead={lead}
-            steps={steps}
-            templates={TEMPLATES}
-            hoveredTemplate={hoveredTemplate}
-            setHoveredTemplate={setHoveredTemplate}
-            onUseTemplate={handleUseTemplate}
-          />
-
-        </div>
-
-        {/* Actions zone */}
-        <div style={{ flexShrink: 0, background: "#161921", borderTop: "1px solid var(--border-strong)", padding: "13px 18px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button
-              onClick={handleSend}
-              style={{ width: "100%", padding: "10px 16px", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.2px", cursor: "pointer", background: "var(--accent)", color: "#fff", border: "none", fontFamily: "var(--font-ui)", boxShadow: "0 1px 12px rgba(59,130,246,0.3)", transition: "background .1s" }}
-              onMouseEnter={e => (e.currentTarget.style.background = "var(--accent-hover)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "var(--accent)")}
-            >
-              {sendLabel}
-            </button>
-            <div style={{ display: "flex", gap: 8 }}>
-              {(["Skip", "Log call"] as const).map(label => (
-                <button
-                  key={label}
-                  onClick={label === "Skip" ? handleSkip : handleLogCall}
-                  style={{ flex: 1, padding: "7px 12px", borderRadius: "var(--r-sm)", fontSize: 11, fontWeight: 500, cursor: "pointer", background: "transparent", color: "var(--text-muted)", border: "1px solid rgba(255,255,255,0.07)", fontFamily: "var(--font-ui)", transition: "color .1s" }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
-                >
-                  {label}
-                </button>
-              ))}
+            {/* 4 — Send + secondary actions */}
+            <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.05)", flexShrink: 0, display: "flex", flexDirection: "column", gap: 7 }}>
+              <button
+                onClick={handleSend}
+                style={{ width: "100%", padding: "9px 16px", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.2px", cursor: "pointer", background: "var(--accent)", color: "#fff", border: "none", fontFamily: "var(--font-ui)", boxShadow: "0 1px 10px rgba(59,130,246,0.25)", transition: "background .1s" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "var(--accent-hover)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "var(--accent)")}
+              >
+                {sendLabel}
+              </button>
+              <div style={{ display: "flex", gap: 6 }}>
+                {(["Skip", "Log call"] as const).map(label => (
+                  <button
+                    key={label}
+                    onClick={label === "Skip" ? handleSkip : handleLogCall}
+                    style={{ flex: 1, padding: "6px 10px", borderRadius: "var(--r-sm)", fontSize: 11, fontWeight: 500, cursor: "pointer", background: "transparent", color: "var(--text-muted)", border: "1px solid rgba(255,255,255,0.06)", fontFamily: "var(--font-ui)", transition: "color .1s" }}
+                    onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
+                    onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 8, display: "flex", alignItems: "center", gap: 4 }}>
-            <IcoInfo /> Sending will log to FUB and advance the sequence to step {lead.sequenceStep + 1}
+
           </div>
         </div>
       </div>
