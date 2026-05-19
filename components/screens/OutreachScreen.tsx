@@ -602,6 +602,56 @@ function SequenceTemplatePanel({
     </div>
   );
 }
+// ── RailCopyButton ─────────────────────────────────────────────────────────
+function RailCopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  async function handleCopy() {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  }
+  return (
+    <button
+      onClick={handleCopy}
+      style={{
+        fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 4,
+        cursor: "pointer", fontFamily: "var(--font-ui)", flexShrink: 0,
+        background: copied ? "rgba(16,185,129,0.12)" : "rgba(59,130,246,0.10)",
+        color:      copied ? "#10b981"               : "var(--accent)",
+        border:     copied ? "1px solid rgba(16,185,129,0.22)" : "1px solid rgba(59,130,246,0.22)",
+        transition: "all 0.15s",
+      }}
+    >
+      {copied ? "Copied ✓" : "Copy"}
+    </button>
+  );
+}
+
+// ── RailRefreshButton ──────────────────────────────────────────────────────
+function RailRefreshButton({ listingId, onRefreshed }: { listingId: string; onRefreshed: (u: Partial<QueueLead>) => void }) {
+  const [refreshing, setRefreshing] = useState(false);
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      const res  = await fetch("/api/skip-trace/refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ listing_id: listingId }) });
+      const json = await res.json();
+      if (json.ui) onRefreshed({ bestPhone: json.ui.bestPhone, bestEmail: json.ui.bestEmail, contactConfidence: json.ui.contactConfidence, enrichedAt: json.ui.enrichedAt, canRefresh: json.ui.canRefresh });
+    } catch (err) {
+      console.error("[RailRefreshButton] failed:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+  return (
+    <button
+      onClick={handleRefresh}
+      disabled={refreshing}
+      style={{ marginTop: 8, fontSize: 10, fontWeight: 500, padding: "3px 8px", borderRadius: 4, cursor: refreshing ? "default" : "pointer", fontFamily: "var(--font-ui)", background: "transparent", color: "#3a3f55", border: "1px solid #1a1d26", opacity: refreshing ? 0.5 : 1, transition: "opacity 0.15s" }}
+    >
+      {refreshing ? "Refreshing…" : "Re-run skip trace"}
+    </button>
+  );
+}
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 function QueueRow({ lead, selected, onClick }: { lead: QueueLead; selected: boolean; onClick: () => void }) {
@@ -1022,73 +1072,94 @@ export default function OutreachScreen() {
       </div>
 
       {/* ══ RIGHT RAIL ══ */}
-      <div style={{ width: 252, minWidth: 252, background: "var(--bg-surface)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+      <div style={{ width: 240, minWidth: 240, background: "var(--bg-surface)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
 
-        {/* Touch stats */}
-        <div style={{ padding: "13px 14px", borderBottom: "1px solid var(--border)" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.6px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 9 }}>Touch history</div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {[
-              { num: String(lead.touchStats.touches), lbl: "touches"      },
-              { num: lead.touchStats.lastContact,     lbl: "last contact" },
-              { num: String(lead.touchStats.replies), lbl: "replies"      },
-            ].map(box => (
-              <div key={box.lbl} style={{ flex: 1, background: "var(--bg-card)", borderRadius: "var(--r-sm)", padding: "8px 6px 7px", textAlign: "center", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>{box.num}</div>
-                <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>{box.lbl}</div>
-              </div>
-            ))}
+        {/* 1 — Contact block */}
+        <div style={{ padding: "14px 14px 12px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>Contact</span>
+            {lead.contactConfidence && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 4,
+                ...(lead.contactConfidence === "high"
+                  ? { background: "rgba(16,185,129,0.12)", color: "#10b981", border: "1px solid rgba(16,185,129,0.22)" }
+                  : { background: "rgba(245,158,11,0.10)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.20)" })
+              }}>
+                {lead.contactConfidence === "high" ? "Verified" : "Likely match"}
+              </span>
+            )}
+            {!lead.contactConfidence && (
+              <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 4, background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}>
+                Unverified
+              </span>
+            )}
           </div>
-        </div>
 
-        {/* Contact section — BatchData enrichment, identical to DashboardScreen */}
-        {(lead.contactConfidence === "high" || lead.contactConfidence === "medium") && (
-          <ContactSection lead={lead} onRefreshed={handleLeadRefreshed} />
-        )}
-
-        {/* Contact log */}
-        <div style={{ padding: "13px 14px", borderBottom: "1px solid var(--border)" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.6px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 9 }}>Contact log</div>
-          {lead.contactLog.length === 0 && (
-            <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>No contact yet</div>
-          )}
-          {lead.contactLog.slice(0, 2).map((entry, i) => {
-            const ico = LOG_ICON_STYLES[entry.channel];
-            return (
-              <div key={i} style={{ display: "flex", gap: 8, padding: "5px 0", alignItems: "flex-start" }}>
-                <div style={{ width: 22, height: 22, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0, marginTop: 1, background: ico.bg, color: ico.color }}>
-                  {ico.label}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: "#c8cfe0", lineHeight: 1.4 }}>{entry.title}</div>
-                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>{entry.date}</div>
-                </div>
-              </div>
-            );
-          })}
-          {lead.contactLog.length > 2 && (
-            <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 6, cursor: "pointer" }}>
-              View all activity ({lead.contactLog.length})
+          {lead.bestPhone ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: lead.bestEmail ? 6 : 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#eceef5", letterSpacing: "0.02em" }}>{lead.bestPhone}</div>
+              <RailCopyButton value={lead.bestPhone} />
             </div>
+          ) : (
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: lead.bestEmail ? 6 : 0 }}>No phone found</div>
+          )}
+
+          {lead.bestEmail && (
+            <div style={{ fontSize: 11, color: "#7a8399", marginTop: 4 }}>{lead.bestEmail}</div>
+          )}
+
+          {lead.canRefresh && (
+            <RailRefreshButton listingId={lead.listingId} onRefreshed={handleLeadRefreshed} />
           )}
         </div>
 
-        {/* Context — collapsible */}
-        <ContextSection lead={lead} />
+        {/* 2 — Recent activity */}
+        <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8 }}>Recent activity</div>
+          {lead.contactLog.length === 0 ? (
+            <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>No contact yet</div>
+          ) : (
+            <>
+              {lead.contactLog.slice(0, 2).map((entry, i) => {
+                const ico = LOG_ICON_STYLES[entry.channel];
+                return (
+                  <div key={i} style={{ display: "flex", gap: 8, padding: "4px 0", alignItems: "flex-start" }}>
+                    <div style={{ width: 20, height: 20, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flexShrink: 0, marginTop: 1, background: ico.bg, color: ico.color }}>
+                      {ico.label}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 11, color: "#b0b8cc", lineHeight: 1.4 }}>{entry.title}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>{entry.date}</div>
+                    </div>
+                  </div>
+                );
+              })}
+              {lead.contactLog.length > 2 && (
+                <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 6, cursor: "pointer" }}>
+                  View all activity ({lead.contactLog.length})
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
-        {/* Lead score */}
-        <div style={{ padding: "13px 14px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.6px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 9 }}>Lead score</div>
-          {lead.scores.map(s => (
-            <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-              <div style={{ fontSize: 11, color: "var(--text-secondary)", minWidth: 80 }}>{s.label}</div>
-              <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden" }}>
-                <div style={{ width: `${s.value}%`, height: 4, borderRadius: 2, background: s.color }} />
+        {/* 3 — Score (2 metrics only) */}
+        <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 10 }}>Score</div>
+          {lead.scores.filter(s => s.label === "Opportunity" || s.label === "Contact risk").map(s => (
+            <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", minWidth: 76 }}>{s.label}</div>
+              <div style={{ flex: 1, height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ width: `${s.value}%`, height: 3, borderRadius: 2, background: s.color }} />
               </div>
-              <div style={{ fontSize: 10, color: s.color === "var(--text-secondary)" ? "var(--text-muted)" : s.color, minWidth: 20, textAlign: "right" }}>{s.value}</div>
+              <div style={{ fontSize: 10, color: s.color, minWidth: 18, textAlign: "right" }}>{s.value}</div>
             </div>
           ))}
         </div>
+
+        {/* 4 — Context (collapsible, unchanged) */}
+        <ContextSection lead={lead} />
+
       </div>
     </div>
   );
