@@ -355,40 +355,31 @@ function IcoWarn() {
   );
 }
 
-// ── ContextSection — collapsible talking points + why now ─────────────────
+// ── ContextSection — compact quiet rows ───────────────────────────────────
 function ContextSection({ lead }: { lead: QueueLead }) {
   const [open, setOpen] = useState(false);
+  const rows = [
+    { label: "Push on",   color: "#34d399", text: lead.talkingPush  },
+    { label: "Watch out", color: "#f87171", text: lead.talkingWatch },
+    { label: "Why now",   color: "#6b7094", text: lead.whyNow       },
+  ];
   return (
-    <div style={{ borderBottom: "1px solid var(--border)", background: "#0d1019" }}>
+    <div style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
       <button
         onClick={() => setOpen(o => !o)}
-        style={{
-          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "11px 14px", background: "transparent", border: "none", cursor: "pointer",
-          fontFamily: "var(--font-ui)",
-        }}
+        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)" }}
       >
-        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.6px", color: "var(--text-muted)", textTransform: "uppercase" }}>Context</span>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>Context</span>
         <span style={{ fontSize: 10, color: "var(--text-muted)", display: "inline-block", transition: "transform .15s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
       </button>
       {open && (
-        <div style={{ padding: "0 14px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ borderRadius: "var(--r-sm)", padding: "10px 12px", background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.25)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "#34d399", marginBottom: 6 }}>
-              <IcoPushUp /> Push on
+        <div style={{ padding: "0 14px 12px", display: "flex", flexDirection: "column" }}>
+          {rows.map((row, i) => (
+            <div key={row.label} style={{ padding: "7px 0", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.5px", color: row.color, textTransform: "uppercase", marginBottom: 3, opacity: 0.7 }}>{row.label}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5 }}>{row.text}</div>
             </div>
-            <div style={{ fontSize: 12, color: "#c8cfe0", lineHeight: 1.55 }}>{lead.talkingPush}</div>
-          </div>
-          <div style={{ borderRadius: "var(--r-sm)", padding: "10px 12px", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "#f87171", marginBottom: 6 }}>
-              <IcoWarn /> Watch out
-            </div>
-            <div style={{ fontSize: 12, color: "#c8cfe0", lineHeight: 1.55 }}>{lead.talkingWatch}</div>
-          </div>
-          <div style={{ padding: "9px 11px", borderRadius: "var(--r-sm)", background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.14)" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "#60a5fa", textTransform: "uppercase", marginBottom: 5 }}>Why this lead now</div>
-            <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.5 }}>{lead.whyNow}</div>
-          </div>
+          ))}
         </div>
       )}
     </div>
