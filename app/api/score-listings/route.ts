@@ -199,6 +199,8 @@ async function scoreOneListing(
 export async function POST(req: NextRequest) {
   // ── Auth ────────────────────────────────────────────────────────────────────
   const secret = req.headers.get("x-cron-secret");
+  console.log("[score-listings] received secret:", secret);
+  console.log("[score-listings] expected secret:", process.env.CRON_SECRET);
   if (!secret || secret !== CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

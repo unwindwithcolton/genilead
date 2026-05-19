@@ -6,8 +6,7 @@
 //       status field (dead/closed/nurture-later/DNC), and tasks table
 
 "use client";
-
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
 import type { Tab } from "@/components/Sidebar";
 
