@@ -355,6 +355,46 @@ function IcoWarn() {
   );
 }
 
+// ── ContextSection — collapsible talking points + why now ─────────────────
+function ContextSection({ lead }: { lead: QueueLead }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ borderBottom: "1px solid var(--border)", background: "#0d1019" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "11px 14px", background: "transparent", border: "none", cursor: "pointer",
+          fontFamily: "var(--font-ui)",
+        }}
+      >
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.6px", color: "var(--text-muted)", textTransform: "uppercase" }}>Context</span>
+        <span style={{ fontSize: 10, color: "var(--text-muted)", display: "inline-block", transition: "transform .15s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ padding: "0 14px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ borderRadius: "var(--r-sm)", padding: "10px 12px", background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.25)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "#34d399", marginBottom: 6 }}>
+              <IcoPushUp /> Push on
+            </div>
+            <div style={{ fontSize: 12, color: "#c8cfe0", lineHeight: 1.55 }}>{lead.talkingPush}</div>
+          </div>
+          <div style={{ borderRadius: "var(--r-sm)", padding: "10px 12px", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "#f87171", marginBottom: 6 }}>
+              <IcoWarn /> Watch out
+            </div>
+            <div style={{ fontSize: 12, color: "#c8cfe0", lineHeight: 1.55 }}>{lead.talkingWatch}</div>
+          </div>
+          <div style={{ padding: "9px 11px", borderRadius: "var(--r-sm)", background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.14)" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "#60a5fa", textTransform: "uppercase", marginBottom: 5 }}>Why this lead now</div>
+            <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.5 }}>{lead.whyNow}</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── ContactSection — identical to DashboardScreen ─────────────────────────
 function ContactSection({
   lead,
@@ -466,7 +506,102 @@ function ContactSection({
     </div>
   );
 }
+// ── SequenceTemplatePanel — collapsed by default ───────────────────────────
+function SequenceTemplatePanel({
+  lead,
+  steps,
+  templates,
+  hoveredTemplate,
+  setHoveredTemplate,
+  onUseTemplate,
+}: {
+  lead: QueueLead;
+  steps: { label: string; state: "done" | "now" | "future" }[];
+  templates: { channel: string; name: string; desc: string }[];
+  hoveredTemplate: number | null;
+  setHoveredTemplate: (i: number | null) => void;
+  onUseTemplate: (t: { channel: string; name: string; desc: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
 
+  return (
+    <div style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+      {/* Toggle row */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "10px 18px", background: "transparent", border: "none", cursor: "pointer",
+          fontFamily: "var(--font-ui)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>
+            Sequence &amp; Templates
+          </span>
+          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
+            Step {lead.sequenceStep} of {lead.sequenceTotal} · {templates.length} templates
+          </span>
+        </div>
+        <span style={{ fontSize: 10, color: "var(--text-muted)", display: "inline-block", transition: "transform .15s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
+      </button>
+
+      {open && (
+        <div style={{ padding: "0 18px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* Sequence */}
+          <div style={{ background: "var(--bg-surface)", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", padding: "10px 12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{lead.sequenceName}</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>Step {lead.sequenceStep} of {lead.sequenceTotal}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
+              {steps.map((s, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {i > 0 && <div style={{ width: 12, height: 1, background: "rgba(255,255,255,0.1)", flexShrink: 0 }} />}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, whiteSpace: "nowrap", color: s.state === "done" ? "#34d399" : s.state === "now" ? "#60a5fa" : "#3a3f55", fontWeight: s.state === "now" ? 600 : 400 }}>
+                    {s.state === "done" && <IcoCheck />}
+                    {s.state === "now"  && <IcoNow />}
+                    {s.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Templates */}
+          <div style={{ background: "var(--bg-surface)", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px 8px", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>Swap template</span>
+              <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{templates.length} available</span>
+            </div>
+            {templates.map((t, i) => (
+              <div
+                key={i}
+                onClick={() => onUseTemplate(t)}
+                onMouseEnter={() => setHoveredTemplate(i)}
+                onMouseLeave={() => setHoveredTemplate(null)}
+                style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 12px", borderBottom: i < templates.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", cursor: "pointer", background: hoveredTemplate === i ? "var(--bg-card-hover)" : "transparent", transition: "background .1s" }}
+              >
+                <div style={{ width: 28, height: 28, borderRadius: 5, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, marginTop: 1, background: t.channel === "SMS" ? "rgba(16,185,129,0.1)" : "rgba(59,130,246,0.1)", color: t.channel === "SMS" ? "#34d399" : "#60a5fa", border: t.channel === "SMS" ? "1px solid rgba(16,185,129,0.18)" : "1px solid rgba(59,130,246,0.18)" }}>
+                  {t.channel === "SMS" ? "S" : "E"}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-primary)", marginBottom: 2 }}>{t.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.desc}</div>
+                </div>
+                <div style={{ fontSize: 10, color: "#60a5fa", opacity: hoveredTemplate === i ? 1 : 0, transition: "opacity .1s", padding: "2px 7px", borderRadius: 3, border: "1px solid rgba(59,130,246,0.3)", background: "rgba(59,130,246,0.08)", whiteSpace: "nowrap", flexShrink: 0, alignSelf: "center" }}>
+                  Use →
+                </div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+}
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 function QueueRow({ lead, selected, onClick }: { lead: QueueLead; selected: boolean; onClick: () => void }) {
@@ -807,165 +942,116 @@ export default function OutreachScreen() {
           </div>
         </div>
 
-        {/* AI zone */}
-        <div style={{ background: "#0e1320", borderBottom: "1px solid rgba(59,130,246,0.15)", padding: "12px 18px", flexShrink: 0 }}>
-          <div style={{ background: "#111827", borderRadius: "var(--r-md)", border: "1px solid rgba(59,130,246,0.24)", borderLeft: "3px solid var(--accent)", padding: "11px 14px 12px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 700, letterSpacing: "0.6px", color: "#60a5fa", textTransform: "uppercase" }}>
-                <IcoStar /> AI recommended opening
-              </div>
-              <button
-                onClick={handleRegenerate}
-                style={{ fontSize: 10, color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 3, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", fontFamily: "var(--font-ui)", transition: "color .1s" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
-                onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
-              >
-                <IcoRegen /> Regenerate
-              </button>
-            </div>
-            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
-              {lead.aiSignals.map(s => (
-                <span key={s} style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 3, background: "rgba(59,130,246,0.1)", color: "#93c5fd", border: "1px solid rgba(59,130,246,0.18)" }}>
-                  {s}
-                </span>
-              ))}
-            </div>
-            <div style={{ fontSize: 12.5, color: "#d4d8e8", lineHeight: 1.65, fontStyle: "italic", borderLeft: "2px solid rgba(59,130,246,0.35)", paddingLeft: 10 }}>
-              {lead.aiOpening}
-            </div>
-          </div>
-        </div>
+        {/* AI + Composer — unified zone */}
+        <div style={{ background: "#0e1320", borderBottom: "1px solid rgba(59,130,246,0.15)", padding: "12px 18px 0", flexShrink: 0 }}>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", padding: "0 18px", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--bg-surface)" }}>
-          {(["SMS", "Email", "Call script"] as ComposerTab[]).map(tab => (
-            <button
-              key={tab}
-              onClick={() => handleTabChange(tab)}
-              style={{ padding: "9px 14px", fontSize: 12, fontWeight: 500, color: activeTab === tab ? "#60a5fa" : "var(--text-muted)", background: "transparent", border: "none", borderBottom: activeTab === tab ? "2px solid var(--accent)" : "2px solid transparent", cursor: "pointer", fontFamily: "var(--font-ui)", transition: "color .1s" }}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Composer body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 0, background: "var(--bg-base)" }}>
-
-          {/* Draft card */}
-          <div style={{ background: "var(--bg-card)", borderRadius: "var(--r-md)", border: "1px solid var(--border-strong)", marginBottom: 8, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 13px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "#60a5fa", textTransform: "uppercase" }}>AI draft — edit before sending</span>
-              <div style={{ display: "flex", gap: 6 }}>
-                {["Use opening line", "Clear"].map(a => (
-                  <button
-                    key={a}
-                    onClick={() => {
-                      if (a === "Use opening line") setDraft(lead.aiOpening.replace(/^"|"$/g, ""));
-                      if (a === "Clear") setDraft("");
-                    }}
-                    style={{ fontSize: 10, color: "var(--text-muted)", cursor: "pointer", padding: "1px 6px", borderRadius: 3, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", fontFamily: "var(--font-ui)", transition: "color .1s" }}
-                    onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
-                    onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
-                  >
-                    {a}
-                  </button>
+          {/* Signal chips + regenerate */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <IcoStar />
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {lead.aiSignals.map(s => (
+                  <span key={s} style={{ fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 3, background: "rgba(59,130,246,0.1)", color: "#93c5fd", border: "1px solid rgba(59,130,246,0.18)" }}>
+                    {s}
+                  </span>
                 ))}
               </div>
             </div>
+            <button
+              onClick={handleRegenerate}
+              style={{ fontSize: 10, color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 3, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", fontFamily: "var(--font-ui)", transition: "color .1s", flexShrink: 0 }}
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
+            >
+              <IcoRegen /> Regenerate
+            </button>
+          </div>
+
+          {/* Unified card: AI suggestion flows into editable draft */}
+          <div style={{ background: "#111827", borderRadius: "var(--r-md) var(--r-md) 0 0", border: "1px solid rgba(59,130,246,0.24)", borderBottom: "none", borderLeft: "3px solid var(--accent)", overflow: "hidden" }}>
+
+            {/* AI suggested text — tap to use */}
+            <div
+              onClick={() => setDraft(lead.aiOpening.replace(/^"|"$/g, ""))}
+              style={{ padding: "10px 14px 9px", borderBottom: "1px solid rgba(59,130,246,0.12)", cursor: "pointer" }}
+              title="Click to use as draft"
+            >
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.6px", color: "#4a7aaa", textTransform: "uppercase", marginBottom: 5 }}>AI suggestion — click to use</div>
+              <div style={{ fontSize: 12.5, color: "#8ba8cc", lineHeight: 1.6, fontStyle: "italic" }}>
+                {lead.aiOpening}
+              </div>
+            </div>
+
+            {/* Tabs sit inside the card */}
+            <div style={{ display: "flex", padding: "0 14px", background: "rgba(0,0,0,0.15)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              {(["SMS", "Email", "Call script"] as ComposerTab[]).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => handleTabChange(tab)}
+                  style={{ padding: "7px 12px", fontSize: 11, fontWeight: 500, color: activeTab === tab ? "#60a5fa" : "var(--text-muted)", background: "transparent", border: "none", borderBottom: activeTab === tab ? "2px solid var(--accent)" : "2px solid transparent", cursor: "pointer", fontFamily: "var(--font-ui)", transition: "color .1s" }}
+                >
+                  {tab}
+                </button>
+              ))}
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
+                <button
+                  onClick={() => setDraft("")}
+                  style={{ fontSize: 10, color: "var(--text-muted)", cursor: "pointer", padding: "1px 6px", borderRadius: 3, border: "none", background: "transparent", fontFamily: "var(--font-ui)" }}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            {/* Editable draft */}
             <textarea
               value={regenerating ? "" : draft}
               onChange={e => setDraft(e.target.value)}
-              placeholder={regenerating ? "Regenerating…" : ""}
-              style={{ width: "100%", background: "transparent", border: "none", padding: "10px 14px 14px", fontSize: 13, color: "#e0e4f0", fontFamily: "var(--font-ui)", resize: "none", height: 100, lineHeight: 1.75, outline: "none" }}
+              placeholder={regenerating ? "Regenerating…" : "Edit your message…"}
+              style={{ width: "100%", background: "transparent", border: "none", padding: "10px 14px 14px", fontSize: 13, color: "#e0e4f0", fontFamily: "var(--font-ui)", resize: "none", height: 110, lineHeight: 1.75, outline: "none", boxSizing: "border-box" }}
             />
           </div>
+        </div>
 
-          {/* Sequence divider */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0 8px" }}>
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
-            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>Sequence</span>
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
-          </div>
+        {/* Composer body — sequence + templates collapsed */}
+        <div style={{ flex: 1, overflowY: "auto", background: "var(--bg-base)" }}>
 
-          {/* Sequence group */}
-          <div style={{ background: "var(--bg-surface)", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", padding: "10px 12px", marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{lead.sequenceName}</span>
-              <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>Step {lead.sequenceStep} of {lead.sequenceTotal}</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
-              {steps.map((s, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {i > 0 && <div style={{ width: 12, height: 1, background: "rgba(255,255,255,0.1)", flexShrink: 0 }} />}
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, whiteSpace: "nowrap", color: s.state === "done" ? "#34d399" : s.state === "now" ? "#60a5fa" : "#3a3f55", fontWeight: s.state === "now" ? 600 : 400 }}>
-                    {s.state === "done" && <IcoCheck />}
-                    {s.state === "now"  && <IcoNow />}
-                    {s.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Sequence + Templates — collapsible sub-panel */}
+          <SequenceTemplatePanel
+            lead={lead}
+            steps={steps}
+            templates={TEMPLATES}
+            hoveredTemplate={hoveredTemplate}
+            setHoveredTemplate={setHoveredTemplate}
+            onUseTemplate={handleUseTemplate}
+          />
 
-          {/* Templates divider */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0 8px" }}>
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
-            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>Templates</span>
-            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
-          </div>
-
-          {/* Templates card */}
-          <div style={{ background: "var(--bg-surface)", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px 8px", borderBottom: "1px solid var(--border)" }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>Swap template</span>
-              <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{TEMPLATES.length} available</span>
-            </div>
-            {TEMPLATES.map((t, i) => (
-              <div
-                key={i}
-                onClick={() => handleUseTemplate(t)}
-                onMouseEnter={() => setHoveredTemplate(i)}
-                onMouseLeave={() => setHoveredTemplate(null)}
-                style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 12px", borderBottom: i < TEMPLATES.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", cursor: "pointer", background: hoveredTemplate === i ? "var(--bg-card-hover)" : "transparent", transition: "background .1s" }}
-              >
-                <div style={{ width: 28, height: 28, borderRadius: 5, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, marginTop: 1, background: t.channel === "SMS" ? "rgba(16,185,129,0.1)" : "rgba(59,130,246,0.1)", color: t.channel === "SMS" ? "#34d399" : "#60a5fa", border: t.channel === "SMS" ? "1px solid rgba(16,185,129,0.18)" : "1px solid rgba(59,130,246,0.18)" }}>
-                  {t.channel === "SMS" ? "S" : "E"}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-primary)", marginBottom: 2 }}>{t.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.desc}</div>
-                </div>
-                <div style={{ fontSize: 10, color: "#60a5fa", opacity: hoveredTemplate === i ? 1 : 0, transition: "opacity .1s", padding: "2px 7px", borderRadius: 3, border: "1px solid rgba(59,130,246,0.3)", background: "rgba(59,130,246,0.08)", whiteSpace: "nowrap", flexShrink: 0, alignSelf: "center" }}>
-                  Use →
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Actions zone */}
         <div style={{ flexShrink: 0, background: "#161921", borderTop: "1px solid var(--border-strong)", padding: "13px 18px" }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {(["Skip", "Log call"] as const).map(label => (
-              <button
-                key={label}
-                onClick={label === "Skip" ? handleSkip : handleLogCall}
-                style={{ padding: "9px 16px", borderRadius: "var(--r-sm)", fontSize: 12, fontWeight: 500, cursor: "pointer", background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-strong)", fontFamily: "var(--font-ui)", transition: "background .1s, color .1s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "var(--bg-card-hover)"; e.currentTarget.style.color = "var(--text-primary)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "var(--bg-card)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
-              >
-                {label}
-              </button>
-            ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <button
               onClick={handleSend}
-              style={{ flex: 1, padding: "9px 16px", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.2px", cursor: "pointer", background: "var(--accent)", color: "#fff", border: "none", fontFamily: "var(--font-ui)", boxShadow: "0 1px 12px rgba(59,130,246,0.3)", transition: "background .1s" }}
+              style={{ width: "100%", padding: "10px 16px", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.2px", cursor: "pointer", background: "var(--accent)", color: "#fff", border: "none", fontFamily: "var(--font-ui)", boxShadow: "0 1px 12px rgba(59,130,246,0.3)", transition: "background .1s" }}
               onMouseEnter={e => (e.currentTarget.style.background = "var(--accent-hover)")}
               onMouseLeave={e => (e.currentTarget.style.background = "var(--accent)")}
             >
               {sendLabel}
             </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              {(["Skip", "Log call"] as const).map(label => (
+                <button
+                  key={label}
+                  onClick={label === "Skip" ? handleSkip : handleLogCall}
+                  style={{ flex: 1, padding: "7px 12px", borderRadius: "var(--r-sm)", fontSize: 11, fontWeight: 500, cursor: "pointer", background: "transparent", color: "var(--text-muted)", border: "1px solid rgba(255,255,255,0.07)", fontFamily: "var(--font-ui)", transition: "color .1s" }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 8, display: "flex", alignItems: "center", gap: 4 }}>
             <IcoInfo /> Sending will log to FUB and advance the sequence to step {lead.sequenceStep + 1}
@@ -1004,7 +1090,7 @@ export default function OutreachScreen() {
           {lead.contactLog.length === 0 && (
             <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>No contact yet</div>
           )}
-          {lead.contactLog.map((entry, i) => {
+          {lead.contactLog.slice(0, 2).map((entry, i) => {
             const ico = LOG_ICON_STYLES[entry.channel];
             return (
               <div key={i} style={{ display: "flex", gap: 8, padding: "5px 0", alignItems: "flex-start" }}>
@@ -1018,30 +1104,15 @@ export default function OutreachScreen() {
               </div>
             );
           })}
+          {lead.contactLog.length > 2 && (
+            <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 6, cursor: "pointer" }}>
+              View all activity ({lead.contactLog.length})
+            </div>
+          )}
         </div>
 
-        {/* Talking points */}
-        <div style={{ borderBottom: "1px solid var(--border)", background: "#0d1019" }}>
-          <div style={{ padding: "12px 14px 8px" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.6px", color: "var(--text-muted)", textTransform: "uppercase" }}>Talking points</div>
-          </div>
-          <div style={{ margin: "0 14px 8px", borderRadius: "var(--r-sm)", padding: "10px 12px", background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.25)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "#34d399", marginBottom: 6 }}>
-              <IcoPushUp /> Push on
-            </div>
-            <div style={{ fontSize: 12, color: "#c8cfe0", lineHeight: 1.55 }}>{lead.talkingPush}</div>
-          </div>
-          <div style={{ margin: "0 14px 10px", borderRadius: "var(--r-sm)", padding: "10px 12px", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "#f87171", marginBottom: 6 }}>
-              <IcoWarn /> Watch out
-            </div>
-            <div style={{ fontSize: 12, color: "#c8cfe0", lineHeight: 1.55 }}>{lead.talkingWatch}</div>
-          </div>
-          <div style={{ margin: "0 14px 12px", padding: "9px 11px", borderRadius: "var(--r-sm)", background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.14)" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "#60a5fa", textTransform: "uppercase", marginBottom: 5 }}>Why this lead now</div>
-            <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.5 }}>{lead.whyNow}</div>
-          </div>
-        </div>
+        {/* Context — collapsible */}
+        <ContextSection lead={lead} />
 
         {/* Lead score */}
         <div style={{ padding: "13px 14px" }}>
