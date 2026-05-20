@@ -1,69 +1,60 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Tier = "HOT" | "WARM" | "COLD";
-type ChannelChip = "SMS" | "Email" | "Call";
 type UrgencyState = "overdue" | "due" | "upcoming";
-type ComposerTab = "SMS" | "Email" | "Call script";
-type FilterPill = "All" | "Overdue" | "Due today" | "Upcoming";
+
+interface TouchEntry {
+  channel: "sms" | "email" | "call";
+  title: string;
+  date: string;
+}
 
 interface QueueLead {
   id: string;
   listingId: string;
-  name: string;
-  tier: Tier;
-  channel: ChannelChip;
-  urgencyState: UrgencyState;
-  urgencyText: string;
-  touches: number;
-  source: string;
-  lastContact: string;
-  unread?: boolean;
-  // center panel
   address: string;
-  ask: string;
-  consentOk: boolean;
-  aiSignals: string[];
-  aiOpening: string;
-  drafts: Record<ComposerTab, string>;
+  tier: Tier;
+  urgencyState: UrgencyState;
+  score: number;
+  chips: string[];
+  // contact
+  bestPhone: string | null;
+  bestPhoneType: "mobile" | "landline" | "voip" | "unknown" | null;
+  bestPhoneDnc: boolean;
+  bestEmail: string | null;
+  contactConfidence: "high" | "medium" | null;
+  enrichedAt: string | null;
+  canRefresh: boolean;
+  // draft
+  aiDraft: string;
+  aiAngle: string;
+  // sequence
   sequenceName: string;
   sequenceTotal: number;
   sequenceStep: number;
-  // right rail
-  touchStats: { touches: number; lastContact: string; replies: number };
-  contactLog: { channel: "sms" | "email" | "call"; title: string; date: string }[];
-  talkingPush: string;
-  talkingWatch: string;
-  whyNow: string;
-  scores: { label: string; value: number; color: string }[];
-  // enrichment — mirrors DashboardScreen ActionItem
-  bestPhone:         string | null;
-  bestPhoneType:     "mobile" | "landline" | "voip" | "unknown" | null;
-  bestPhoneDnc:      boolean;
-  bestEmail:         string | null;
-  contactConfidence: "high" | "medium" | null;
-  enrichedAt:        string | null;
-  canRefresh:        boolean;
+  // history
+  touches: number;
+  lastContact: string;
+  contactLog: TouchEntry[];
+  // why
+  evidenceSummary: string | null;
+  signals: { color: "red" | "amber" | "gray"; text: string }[];
+  // owner (ATTOM)
+  ownerType: string;
+  mailingAddress: string | null;
+  holdPeriod: string | null;
+  source: string;
+  // fub
+  fubThread: boolean;
+  fubThreadLabel: string;
+  fubLastActivity: string | null;
+  fubPipelineStage: string | null;
 }
 
-// ── Supabase row shapes ────────────────────────────────────────────────────
-
-interface ListingJoin {
-  address: string | null;
-  city: string | null;
-  state: string | null;
-  zip: string | null;
-  list_price: number | null;
-  source: string | null;
-  best_phone: string | null;
-  best_email: string | null;
-  contact_confidence: "high" | "medium" | "low" | "none" | null;
-  enriched_at: string | null;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// ── Supabase row shape ─────────────────────────────────────────────────────
 type ScoreRow = {
   id: string;
   listing_id: string;
@@ -79,37 +70,23 @@ type ScoreRow = {
   listings: any;
 };
 
-// ── Mapping helpers ────────────────────────────────────────────────────────
-
+// ── Reason labels ──────────────────────────────────────────────────────────
 const REASON_LABELS: Record<string, string | null> = {
-  tax_delinquent:            "Tax delinquent",
-  absentee_owner:            "Absentee owner",
-  high_equity:               "High equity",
-  significant_equity:        "High equity",
-  equity_position:           "Equity position",
-  equity_spread_detected:    "Equity spread",
-  equity_spread_favorable:   "Equity spread",
-  equity_spread_high:        "High equity spread",
-  positive_equity_spread:    "Equity spread",
-  potential_equity_position: "Equity position",
-  minimal_equity_spread:     "Low equity spread",
-  appreciation_since_purchase: "Appreciated",
-  avm_appreciation:          "AVM appreciation",
-  long_ownership:            "Long ownership",
-  long_hold_period:          "Long hold",
-  held_long_term:            "Long hold",
-  recent_acquisition:        "Recent acquisition",
-  off_market_candidate:      "Off-market candidate",
-  off_market_potential:      "Off-market potential",
-  off_market_property:       "Off-market",
-  off_market_status:         "Off-market",
-  owner_occupied:            "Owner-occupied",
-  no_active_listing:         "No active listing",
-  not_currently_listed:      "Not listed",
-  no_listing_active:         "Not listed",
-  price_reduction:           "Price reduction",
-  equity_gain:               "Equity gain",
-  // suppress data-quality noise
+  tax_delinquent: "Tax delinquent", absentee_owner: "Absentee owner",
+  high_equity: "High equity", significant_equity: "High equity",
+  equity_position: "Equity position", equity_spread_detected: "Equity spread",
+  equity_spread_favorable: "Equity spread", equity_spread_high: "High equity spread",
+  positive_equity_spread: "Equity spread", potential_equity_position: "Equity position",
+  minimal_equity_spread: "Low equity spread", appreciation_since_purchase: "Appreciated",
+  avm_appreciation: "AVM appreciation", long_ownership: "Long ownership",
+  long_hold_period: "Long hold", held_long_term: "Long hold",
+  recent_acquisition: "Recent acquisition", off_market_candidate: "Off-market candidate",
+  off_market_potential: "Off-market potential", off_market_property: "Off-market",
+  off_market_status: "Off-market", owner_occupied: "Owner-occupied",
+  no_active_listing: "No active listing", not_currently_listed: "Not listed",
+  no_listing_active: "Not listed", price_reduction: "Price reduction",
+  equity_gain: "Equity gain",
+  // suppress noise
   avm_missing: null, avm_unavailable: null, insufficient_data: null,
   list_price_missing: null, missing_avm: null, missing_avm_data: null,
   missing_list_price: null, missing_listing_data: null, missing_market_data: null,
@@ -129,488 +106,182 @@ const REASON_LABELS: Record<string, string | null> = {
   stale_transaction_data: null, aged_transaction_data: null, unknown_owner_type: null,
 };
 
-function chipsFrom(reasonCodes: string[] | null, evidenceSummary: string | null): string[] {
-  if (reasonCodes && reasonCodes.length > 0) {
-    return reasonCodes
-      .map((c) => REASON_LABELS[c])
-      .filter((l): l is string => !!l)
-      .slice(0, 3);
+// ── Mapping helpers ────────────────────────────────────────────────────────
+function chipsFrom(codes: string[] | null, summary: string | null): string[] {
+  if (codes && codes.length > 0) {
+    return codes.map(c => REASON_LABELS[c]).filter((l): l is string => !!l).slice(0, 3);
   }
-  const text = (evidenceSummary ?? "").toLowerCase();
-  const chips: string[] = [];
-  if (text.includes("tax delinqu"))                       chips.push("Tax delinquent");
-  if (text.includes("absentee"))                          chips.push("Absentee owner");
-  if (text.includes("equity") && chips.length < 3)       chips.push("High equity");
-  if (text.includes("long ownership") && chips.length < 3) chips.push("Long ownership");
-  return chips.slice(0, 3);
+  const t = (summary ?? "").toLowerCase();
+  const out: string[] = [];
+  if (t.includes("tax delinqu")) out.push("Tax delinquent");
+  if (t.includes("absentee")) out.push("Absentee owner");
+  if (t.includes("equity") && out.length < 3) out.push("High equity");
+  if (t.includes("long ownership") && out.length < 3) out.push("Long ownership");
+  return out.slice(0, 3);
 }
 
 function tierFrom(score: number, temperature: string | null): Tier {
   const t = (temperature ?? "").toUpperCase();
-  if (t === "HOT")  return "HOT";
+  if (t === "HOT") return "HOT";
   if (t === "WARM" || score >= 40) return "WARM";
   return "COLD";
 }
 
-function urgencyFrom(tier: Tier): { state: UrgencyState; text: string } {
-  if (tier === "HOT")  return { state: "overdue",  text: "Follow-up overdue" };
-  if (tier === "WARM") return { state: "due",      text: "Follow-up due today" };
-  return                      { state: "upcoming", text: "In queue" };
+function urgencyFrom(tier: Tier): UrgencyState {
+  if (tier === "HOT") return "overdue";
+  if (tier === "WARM") return "due";
+  return "upcoming";
 }
 
-function channelFrom(score: ScoreRow): ChannelChip {
-  if (score.outreach_sms)   return "SMS";
-  if (score.outreach_email) return "Email";
-  return "SMS";
-}
-
-function draftsFrom(score: ScoreRow, address: string): Record<ComposerTab, string> {
-  const sms   = score.outreach_sms ?? `Hi, this is [Your Name] from [Agency]. I wanted to reach out about ${address}. Do you have a moment to connect?`;
-  const email = score.outreach_email
-    ? `Subject: ${score.outreach_email.subject}\n\n${score.outreach_email.body}`
-    : `Hi,\n\nI wanted to reach out about ${address}. I have some information that may be relevant to you.\n\nWould you be open to a quick call?\n\nBest,\n[Your Name]`;
-  const callScript = `Opener: 'Hi, [Your Name] calling about ${address}.'\n\nKey points:\n• ${(score.reason_codes ?? []).slice(0, 3).map((c) => REASON_LABELS[c] ?? c).filter(Boolean).join("\n• ") || "Review property details"}\n\nClose: 'Would you be open to a quick conversation?'`;
-  return { SMS: sms, Email: email, "Call script": callScript };
-}
-
-function aiOpeningFrom(evidenceSummary: string | null, address: string): string {
-  if (evidenceSummary && evidenceSummary.length > 20) {
-    // Use first sentence of evidence summary as the basis for the opener
-    const first = evidenceSummary.split(".")[0];
-    return `"${first}. I'd love to connect about ${address} — do you have a moment?"`;
+function signalsFrom(
+  codes: string[] | null,
+  summary: string | null,
+  chips: string[]
+): { color: "red" | "amber" | "gray"; text: string }[] {
+  const RED_KEYS = ["tax_delinquent"];
+  const AMBER_KEYS = ["absentee_owner", "long_ownership", "long_hold_period", "held_long_term", "off_market_candidate"];
+  if (codes && codes.length > 0) {
+    return codes
+      .filter(c => REASON_LABELS[c])
+      .slice(0, 4)
+      .map(c => ({
+        color: RED_KEYS.includes(c) ? "red" : AMBER_KEYS.includes(c) ? "amber" : "gray",
+        text: REASON_LABELS[c] as string,
+      }));
   }
-  return `"Hi — I wanted to reach out about ${address}. I have some information that might be relevant to you. Worth a quick conversation?"`;
-}
-
-function whyNowFrom(evidenceSummary: string | null, chips: string[]): string {
-  if (evidenceSummary && evidenceSummary.length > 20) return evidenceSummary;
-  if (chips.length > 0) return chips.join(", ") + " — flagged by AI scoring.";
-  return "Surfaced by daily AI scoring run.";
-}
-
-function mapScoreToLead(s: ScoreRow): QueueLead {
-  const listing = Array.isArray(s.listings) ? (s.listings as ScoreRow["listings"][])[0] : s.listings;
-  const address  = listing?.address ?? "Unknown address";
-  const city     = listing?.city ?? "";
-  const fullAddr = city ? `${address}, ${city}` : address;
-  const tier     = tierFrom(s.score, s.temperature ?? null);
-  const urgency  = urgencyFrom(tier);
-  const chips    = chipsFrom(s.reason_codes ?? null, s.evidence_summary ?? null);
-  const trusted  = listing?.contact_confidence === "high" || listing?.contact_confidence === "medium";
-  const daysSinceEnriched = listing?.enriched_at
-    ? (Date.now() - new Date(listing.enriched_at).getTime()) / 86_400_000
-    : null;
-
-  const askPrice = listing?.list_price
-    ? `$${(listing.list_price / 1000).toFixed(0)}k ask`
-    : "Price unknown";
-
-  return {
-    id:           s.id,
-    listingId:    s.listing_id,
-    name:         fullAddr,           // no owner name yet — address is the identity
-    tier,
-    channel:      channelFrom(s),
-    urgencyState: urgency.state,
-    urgencyText:  urgency.text,
-    touches:      0,                  // TODO: derive from outreach_log once listing_id FK is queried
-    source:       listing?.source ?? "Attom",
-    lastContact:  "—",                // TODO: from outreach_log
-    unread:       tier === "HOT",
-    address:      fullAddr,
-    ask:          askPrice,
-    consentOk:    trusted,
-    aiSignals:    chips.length > 0 ? chips : ["AI scored"],
-    aiOpening:    aiOpeningFrom(s.evidence_summary ?? null, address),
-    drafts:       draftsFrom(s, address),
-    sequenceName: tier === "HOT" ? "Hot seller — 7-step" : tier === "WARM" ? "Warm seller — 7-step" : "Cold intro — 5-step",
-    sequenceTotal: tier === "COLD" ? 5 : 7,
-    sequenceStep:  1,                 // TODO: derive from outreach_log step tracking
-    touchStats:   { touches: 0, lastContact: "—", replies: 0 },
-    contactLog:   [],                 // TODO: populate from outreach_log once listing_id FK is live
-    talkingPush:  chips.length > 0
-      ? chips.join(", ") + ". Flagged as a motivated seller signal."
-      : "Review AI evidence summary for push points.",
-    talkingWatch: "No prior contact history. Keep first message short and low-pressure.",
-    whyNow:       whyNowFrom(s.evidence_summary ?? null, chips),
-    scores: [
-      { label: "Opportunity", value: s.score,                       color: "var(--accent)" },
-      { label: "Confidence",  value: Math.round((s.confidence_score ?? 0) * 100), color: "var(--accent)" },
-      { label: "Fit",         value: Math.min(s.score + 10, 100),   color: "#8892a4" },
-      { label: "Contact risk",value: trusted ? 20 : 60,             color: trusted ? "var(--success)" : "var(--warm)" },
-    ],
-    // Enrichment — mirrors DashboardScreen ContactSection pattern exactly
-    bestPhone:         trusted ? (listing?.best_phone ?? null)  : null,
-    bestPhoneType:     null,
-    bestPhoneDnc:      false,
-    bestEmail:         trusted ? (listing?.best_email ?? null)  : null,
-    contactConfidence: trusted ? (listing!.contact_confidence as "high" | "medium") : null,
-    enrichedAt:        listing?.enriched_at ?? null,
-    canRefresh:        daysSinceEnriched === null || daysSinceEnriched >= 7,
-  };
-}
-
-// ── Sequence steps ─────────────────────────────────────────────────────────
-function buildSteps(step: number, total: number): { label: string; state: "done" | "now" | "future" }[] {
-  const labels = ["D1 SMS", "D2 Email", "D4 SMS", "D6 Call", "D9 Email", "D12 SMS", "D14 Email"];
-  return Array.from({ length: total }, (_, i) => ({
-    label: labels[i] ?? `Step ${i + 1}`,
-    state: i < step - 1 ? "done" : i === step - 1 ? "now" : "future",
+  return chips.map((ch, i) => ({
+    color: i === 0 ? "red" : i === 1 ? "amber" : "gray",
+    text: ch,
   }));
 }
 
-// ── Colour helpers ─────────────────────────────────────────────────────────
-const TIER_STYLES: Record<Tier, { bg: string; color: string; border: string }> = {
-  HOT:  { bg: "rgba(239,68,68,0.14)",   color: "#f87171", border: "rgba(239,68,68,0.3)"   },
-  WARM: { bg: "rgba(245,158,11,0.12)",  color: "#fbbf24", border: "rgba(245,158,11,0.28)" },
-  COLD: { bg: "rgba(107,114,128,0.1)",  color: "#9ca3af", border: "rgba(107,114,128,0.2)" },
+function angleFrom(chips: string[]): string {
+  if (chips.includes("Tax delinquent") && chips.includes("Absentee owner"))
+    return "Tax delinquency + absentee owner — lead with urgency, keep it brief";
+  if (chips.includes("Tax delinquent"))
+    return "Tax delinquency — financial pressure angle, be direct";
+  if (chips.includes("Long hold") || chips.includes("Long ownership"))
+    return "Long hold + market timing — opportunity framing";
+  if (chips.includes("High equity") || chips.includes("Equity spread"))
+    return "High equity — lead with market insight, no pressure";
+  if (chips.includes("Absentee owner"))
+    return "Absentee owner — low-pressure check-in, offer value";
+  return "AI-scored lead — review signals before dialing";
+}
+
+function mapScoreToLead(s: ScoreRow): QueueLead {
+  const listing = Array.isArray(s.listings) ? s.listings[0] : s.listings;
+  const address = listing?.address ?? "Unknown address";
+  const city = listing?.city ?? "";
+  const fullAddr = city ? `${address}, ${city}` : address;
+  const tier = tierFrom(s.score, s.temperature ?? null);
+  const chips = chipsFrom(s.reason_codes ?? null, s.evidence_summary ?? null);
+  const trusted =
+    listing?.contact_confidence === "high" ||
+    listing?.contact_confidence === "medium";
+  const daysSince = listing?.enriched_at
+    ? (Date.now() - new Date(listing.enriched_at).getTime()) / 86_400_000
+    : null;
+
+  const draft =
+    s.outreach_sms ??
+    `Hi, this is [Your Name] from [Agency]. I noticed your property at ${address} and wanted to reach out — do you have a moment to connect?`;
+
+  return {
+    id: s.id,
+    listingId: s.listing_id,
+    address: fullAddr,
+    tier,
+    urgencyState: urgencyFrom(tier),
+    score: s.score,
+    chips,
+    bestPhone: trusted ? (listing?.best_phone ?? null) : null,
+    bestPhoneType: null,
+    bestPhoneDnc: false,
+    bestEmail: trusted ? (listing?.best_email ?? null) : null,
+    contactConfidence: trusted
+      ? (listing!.contact_confidence as "high" | "medium")
+      : null,
+    enrichedAt: listing?.enriched_at ?? null,
+    canRefresh: daysSince === null || daysSince >= 7,
+    aiDraft: draft,
+    aiAngle: angleFrom(chips),
+    sequenceName:
+      tier === "HOT"
+        ? "Hot seller — 7-step"
+        : tier === "WARM"
+        ? "Warm seller — 7-step"
+        : "Cold intro — 5-step",
+    sequenceTotal: tier === "COLD" ? 5 : 7,
+    sequenceStep: 1,
+    touches: 0,
+    lastContact: "—",
+    contactLog: [],
+    evidenceSummary: s.evidence_summary ?? null,
+    signals: signalsFrom(s.reason_codes ?? null, s.evidence_summary ?? null, chips),
+    ownerType: "Absentee",
+    mailingAddress: null,
+    holdPeriod: null,
+    source: listing?.source ?? "ATTOM",
+    fubThread: false,
+    fubThreadLabel: "No thread",
+    fubLastActivity: null,
+    fubPipelineStage: null,
+  };
+}
+
+// ── Colour tokens ──────────────────────────────────────────────────────────
+const C = {
+  bg:      "#0b0d11",
+  surface: "#13151b",
+  card:    "#1a1d26",
+  card2:   "#1f2230",
+  border:  "rgba(255,255,255,0.07)",
+  accent:  "#3b82f6",
+  hot:     "#ef4444",
+  warm:    "#f59e0b",
+  success: "#10b981",
+  tp:      "#f0f2f7",
+  ts:      "#8892a4",
+  tm:      "#6b7094",
+} as const;
+
+const TIER_COLOR: Record<Tier, string> = {
+  HOT:  C.hot,
+  WARM: C.warm,
+  COLD: C.ts,
 };
 
-const CH_CHIP_STYLES: Record<ChannelChip, { bg: string; color: string; border: string }> = {
-  SMS:   { bg: "rgba(16,185,129,0.1)",  color: "#34d399", border: "rgba(16,185,129,0.22)" },
-  Email: { bg: "rgba(59,130,246,0.1)",  color: "#60a5fa", border: "rgba(59,130,246,0.22)" },
-  Call:  { bg: "rgba(245,158,11,0.1)",  color: "#fbbf24", border: "rgba(245,158,11,0.2)"  },
+const SIG_COLOR: Record<"red" | "amber" | "gray", string> = {
+  red:   C.hot,
+  amber: C.warm,
+  gray:  C.ts,
 };
 
-const URGENCY_COLOR: Record<UrgencyState, string> = {
-  overdue:  "#f87171",
-  due:      "#fbbf24",
-  upcoming: "var(--text-muted)",
-};
-
-const LOG_ICON_STYLES: Record<"sms" | "email" | "call", { bg: string; color: string; label: string }> = {
+const LOG_STYLES: Record<"sms"|"email"|"call", { bg: string; color: string; label: string }> = {
   sms:   { bg: "rgba(16,185,129,0.12)", color: "#34d399", label: "S" },
   email: { bg: "rgba(59,130,246,0.12)", color: "#60a5fa", label: "E" },
   call:  { bg: "rgba(245,158,11,0.10)", color: "#fbbf24", label: "C" },
 };
 
-// ── Inline SVG icons ───────────────────────────────────────────────────────
-function IcoStar() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
-      <path d="M5.5 1L6.8 4.2H10L7.4 6.3 8.3 9.5 5.5 7.6 2.7 9.5 3.6 6.3 1 4.2H4.2L5.5 1Z" fill="#60a5fa" />
-    </svg>
-  );
-}
-function IcoRegen() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-      <path d="M8.5 5A3.5 3.5 0 1 1 5 1.5M8.5 1.5v3h-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function IcoCheck() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-      <circle cx="6" cy="6" r="5.5" stroke="#34d399" strokeWidth="1" />
-      <path d="M3.5 6l1.6 1.6L8.5 4" stroke="#34d399" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function IcoNow() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-      <circle cx="6" cy="6" r="5.5" stroke="#3b82f6" strokeWidth="1.5" />
-      <circle cx="6" cy="6" r="2" fill="#3b82f6" />
-    </svg>
-  );
-}
-function IcoInfo() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-      <circle cx="5" cy="5" r="4.5" stroke="#6b7094" strokeWidth="1" />
-      <path d="M5 4.5v3M5 3.2v.4" stroke="#6b7094" strokeWidth="1.1" strokeLinecap="round" />
-    </svg>
-  );
-}
-function IcoConsentOk() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-      <circle cx="5" cy="5" r="4.5" stroke="#34d399" strokeWidth="1" />
-      <path d="M3 5l1.3 1.3L7 3.5" stroke="#34d399" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function IcoConsentNo() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-      <circle cx="5" cy="5" r="4.5" stroke="#f87171" strokeWidth="1" />
-      <path d="M3.5 3.5l3 3M6.5 3.5l-3 3" stroke="#f87171" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-function IcoPushUp() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-      <path d="M5 8V2M5 2L2.5 4.5M5 2L7.5 4.5" stroke="#34d399" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function IcoWarn() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-      <path d="M5 2v3.5M5 7.2v.4" stroke="#f87171" strokeWidth="1.3" strokeLinecap="round" />
-      <circle cx="5" cy="5" r="4.5" stroke="#f87171" strokeWidth="1" />
-    </svg>
-  );
-}
-
-// ── ContextSection — compact quiet rows ───────────────────────────────────
-function ContextSection({ lead }: { lead: QueueLead }) {
-  const [open, setOpen] = useState(false);
-  const rows = [
-    { label: "Push on",   color: "#34d399", text: lead.talkingPush  },
-    { label: "Watch out", color: "#f87171", text: lead.talkingWatch },
-    { label: "Why now",   color: "#6b7094", text: lead.whyNow       },
-  ];
-  return (
-    <div style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)" }}
-      >
-        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>Context</span>
-        <span style={{ fontSize: 10, color: "var(--text-muted)", display: "inline-block", transition: "transform .15s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
-      </button>
-      {open && (
-        <div style={{ padding: "0 14px 12px", display: "flex", flexDirection: "column" }}>
-          {rows.map((row, i) => (
-            <div key={row.label} style={{ padding: "7px 0", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.5px", color: row.color, textTransform: "uppercase", marginBottom: 3, opacity: 0.7 }}>{row.label}</div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5 }}>{row.text}</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── ContactSection — identical to DashboardScreen ─────────────────────────
-function ContactSection({
-  lead,
-  onRefreshed,
-}: {
-  lead: QueueLead;
-  onRefreshed: (updated: Partial<QueueLead>) => void;
-}) {
-  const [refreshing, setRefreshing] = useState(false);
-  const [copied,     setCopied]     = useState(false);
-
-  const confidenceBadge: Record<string, React.CSSProperties> = {
-    high:   { background: "rgba(16,185,129,0.12)", color: "#10b981", border: "1px solid rgba(16,185,129,0.22)" },
-    medium: { background: "rgba(245,158,11,0.10)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.20)" },
-  };
-
-  async function handleCopy() {
-    if (!lead.bestPhone) return;
-    await navigator.clipboard.writeText(lead.bestPhone);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  }
-
-  async function handleRefresh() {
-    setRefreshing(true);
-    try {
-      const res  = await fetch("/api/skip-trace/refresh", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ listing_id: lead.listingId }),
-      });
-      const json = await res.json();
-      if (json.ui) {
-        onRefreshed({
-          bestPhone:         json.ui.bestPhone,
-          bestEmail:         json.ui.bestEmail,
-          contactConfidence: json.ui.contactConfidence,
-          enrichedAt:        json.ui.enrichedAt,
-          canRefresh:        json.ui.canRefresh,
-        });
-      }
-    } catch (err) {
-      console.error("[ContactSection] refresh failed:", err);
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
-  return (
-    <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>Contact</div>
-        {lead.contactConfidence && (
-          <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 4, ...confidenceBadge[lead.contactConfidence] }}>
-            {lead.contactConfidence === "high" ? "Verified" : "Likely match"}
-          </span>
-        )}
-      </div>
-
-      {lead.bestPhone ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: lead.bestEmail ? 6 : 0 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#eceef5", letterSpacing: "0.02em" }}>{lead.bestPhone}</div>
-            {lead.bestPhoneType && (
-              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
-                {lead.bestPhoneType}
-                {lead.bestPhoneDnc && <span style={{ marginLeft: 6, color: "#f87171", fontWeight: 700 }}>· DNC</span>}
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleCopy}
-            style={{
-              fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: 4,
-              cursor: "pointer", fontFamily: "var(--font-ui)", flexShrink: 0,
-              background: copied ? "rgba(16,185,129,0.12)" : "rgba(59,130,246,0.10)",
-              color:      copied ? "#10b981"               : "var(--accent)",
-              border:     copied ? "1px solid rgba(16,185,129,0.22)" : "1px solid rgba(59,130,246,0.22)",
-              transition: "all 0.15s",
-            }}
-          >
-            {copied ? "Copied ✓" : "Copy"}
-          </button>
-        </div>
-      ) : (
-        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: lead.bestEmail ? 6 : 0 }}>No phone found</div>
-      )}
-
-      {lead.bestEmail && (
-        <div style={{ fontSize: 11, color: "#9da2ba", marginBottom: 8 }}>{lead.bestEmail}</div>
-      )}
-
-      {lead.canRefresh && (
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          style={{
-            fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 4,
-            cursor: refreshing ? "default" : "pointer", fontFamily: "var(--font-ui)",
-            background: "transparent", color: "#3a3f55",
-            border: "1px solid #1a1d26",
-            opacity: refreshing ? 0.5 : 1,
-            transition: "opacity 0.15s",
-          }}
-        >
-          {refreshing ? "Refreshing…" : "Re-run skip trace"}
-        </button>
-      )}
-    </div>
-  );
-}
-// ── SequenceTemplatePanel — collapsed by default ───────────────────────────
-function SequenceTemplatePanel({
-  lead,
-  steps,
-  templates,
-  hoveredTemplate,
-  setHoveredTemplate,
-  onUseTemplate,
-}: {
-  lead: QueueLead;
-  steps: { label: string; state: "done" | "now" | "future" }[];
-  templates: { channel: string; name: string; desc: string }[];
-  hoveredTemplate: number | null;
-  setHoveredTemplate: (i: number | null) => void;
-  onUseTemplate: (t: { channel: string; name: string; desc: string }) => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-      {/* Toggle row */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "10px 18px", background: "transparent", border: "none", cursor: "pointer",
-          fontFamily: "var(--font-ui)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>
-            Sequence &amp; Templates
-          </span>
-          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
-            Step {lead.sequenceStep} of {lead.sequenceTotal} · {templates.length} templates
-          </span>
-        </div>
-        <span style={{ fontSize: 10, color: "var(--text-muted)", display: "inline-block", transition: "transform .15s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
-      </button>
-
-      {open && (
-        <div style={{ padding: "0 18px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-
-          {/* Sequence */}
-          <div style={{ background: "var(--bg-surface)", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", padding: "10px 12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{lead.sequenceName}</span>
-              <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>Step {lead.sequenceStep} of {lead.sequenceTotal}</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
-              {steps.map((s, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {i > 0 && <div style={{ width: 12, height: 1, background: "rgba(255,255,255,0.1)", flexShrink: 0 }} />}
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, whiteSpace: "nowrap", color: s.state === "done" ? "#34d399" : s.state === "now" ? "#60a5fa" : "#3a3f55", fontWeight: s.state === "now" ? 600 : 400 }}>
-                    {s.state === "done" && <IcoCheck />}
-                    {s.state === "now"  && <IcoNow />}
-                    {s.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Templates */}
-          <div style={{ background: "var(--bg-surface)", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px 8px", borderBottom: "1px solid var(--border)" }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>Swap template</span>
-              <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{templates.length} available</span>
-            </div>
-            {templates.map((t, i) => (
-              <div
-                key={i}
-                onClick={() => onUseTemplate(t)}
-                onMouseEnter={() => setHoveredTemplate(i)}
-                onMouseLeave={() => setHoveredTemplate(null)}
-                style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 12px", borderBottom: i < templates.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", cursor: "pointer", background: hoveredTemplate === i ? "var(--bg-card-hover)" : "transparent", transition: "background .1s" }}
-              >
-                <div style={{ width: 28, height: 28, borderRadius: 5, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, marginTop: 1, background: t.channel === "SMS" ? "rgba(16,185,129,0.1)" : "rgba(59,130,246,0.1)", color: t.channel === "SMS" ? "#34d399" : "#60a5fa", border: t.channel === "SMS" ? "1px solid rgba(16,185,129,0.18)" : "1px solid rgba(59,130,246,0.18)" }}>
-                  {t.channel === "SMS" ? "S" : "E"}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-primary)", marginBottom: 2 }}>{t.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.desc}</div>
-                </div>
-                <div style={{ fontSize: 10, color: "#60a5fa", opacity: hoveredTemplate === i ? 1 : 0, transition: "opacity .1s", padding: "2px 7px", borderRadius: 3, border: "1px solid rgba(59,130,246,0.3)", background: "rgba(59,130,246,0.08)", whiteSpace: "nowrap", flexShrink: 0, alignSelf: "center" }}>
-                  Use →
-                </div>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      )}
-    </div>
-  );
-}
-// ── RailCopyButton ─────────────────────────────────────────────────────────
-function RailCopyButton({ value }: { value: string }) {
+// ── Small reusable components ──────────────────────────────────────────────
+function CopyButton({ value, style }: { value: string; style?: React.CSSProperties }) {
   const [copied, setCopied] = useState(false);
-  async function handleCopy() {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  }
   return (
     <button
-      onClick={handleCopy}
+      onClick={async () => {
+        await navigator.clipboard.writeText(value).catch(() => {});
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+      }}
       style={{
-        fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 4,
+        fontSize: 9, fontWeight: 700, padding: "3px 9px", borderRadius: 4,
         cursor: "pointer", fontFamily: "var(--font-ui)", flexShrink: 0,
-        background: copied ? "rgba(16,185,129,0.12)" : "rgba(59,130,246,0.10)",
-        color:      copied ? "#10b981"               : "var(--accent)",
+        background: copied ? "rgba(16,185,129,0.12)" : "rgba(59,130,246,0.1)",
+        color:      copied ? "#34d399"               : C.accent,
         border:     copied ? "1px solid rgba(16,185,129,0.22)" : "1px solid rgba(59,130,246,0.22)",
         transition: "all 0.15s",
+        ...style,
       }}
     >
       {copied ? "Copied ✓" : "Copy"}
@@ -618,185 +289,339 @@ function RailCopyButton({ value }: { value: string }) {
   );
 }
 
-// ── RailRefreshButton ──────────────────────────────────────────────────────
-function RailRefreshButton({ listingId, onRefreshed }: { listingId: string; onRefreshed: (u: Partial<QueueLead>) => void }) {
-  const [refreshing, setRefreshing] = useState(false);
-  async function handleRefresh() {
-    setRefreshing(true);
-    try {
-      const res  = await fetch("/api/skip-trace/refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ listing_id: listingId }) });
-      const json = await res.json();
-      if (json.ui) onRefreshed({ bestPhone: json.ui.bestPhone, bestEmail: json.ui.bestEmail, contactConfidence: json.ui.contactConfidence, enrichedAt: json.ui.enrichedAt, canRefresh: json.ui.canRefresh });
-    } catch (err) {
-      console.error("[RailRefreshButton] failed:", err);
-    } finally {
-      setRefreshing(false);
-    }
-  }
+function RetraceButton({
+  listingId,
+  onRefreshed,
+}: {
+  listingId: string;
+  onRefreshed: (u: Partial<QueueLead>) => void;
+}) {
+  const [running, setRunning] = useState(false);
   return (
     <button
-      onClick={handleRefresh}
-      disabled={refreshing}
-      style={{ marginTop: 8, fontSize: 10, fontWeight: 500, padding: "3px 8px", borderRadius: 4, cursor: refreshing ? "default" : "pointer", fontFamily: "var(--font-ui)", background: "transparent", color: "#3a3f55", border: "1px solid #1a1d26", opacity: refreshing ? 0.5 : 1, transition: "opacity 0.15s" }}
+      onClick={async () => {
+        setRunning(true);
+        try {
+          const res  = await fetch("/api/skip-trace/refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ listing_id: listingId }),
+          });
+          const json = await res.json();
+          if (json.ui) onRefreshed({
+            bestPhone:         json.ui.bestPhone,
+            bestEmail:         json.ui.bestEmail,
+            contactConfidence: json.ui.contactConfidence,
+            enrichedAt:        json.ui.enrichedAt,
+            canRefresh:        json.ui.canRefresh,
+          });
+        } catch (err) {
+          console.error("[RetraceButton]", err);
+        } finally {
+          setRunning(false);
+        }
+      }}
+      disabled={running}
+      style={{
+        fontSize: 10, fontWeight: 600, padding: "5px 10px", borderRadius: 4,
+        cursor: running ? "default" : "pointer", fontFamily: "var(--font-ui)",
+        background: "rgba(245,158,11,0.1)", color: "#fbbf24",
+        border: "1px solid rgba(245,158,11,0.22)",
+        opacity: running ? 0.5 : 1, transition: "opacity 0.15s",
+        width: "100%", marginTop: 6,
+      }}
     >
-      {refreshing ? "Refreshing…" : "Re-run skip trace"}
+      {running ? "Running…" : "⚡ Re-run skip trace (BatchData)"}
     </button>
   );
 }
-// ── Sub-components ─────────────────────────────────────────────────────────
 
-function QueueRow({ lead, selected, onClick }: { lead: QueueLead; selected: boolean; onClick: () => void }) {
-  const tier = TIER_STYLES[lead.tier];
-  const ch   = CH_CHIP_STYLES[lead.channel];
+// ── Lead card for carousel ─────────────────────────────────────────────────
+function LeadCard({
+  lead,
+  position, // -1 prev | 0 active | 1 next | 2 next2 | 99 hidden
+  onClick,
+}: {
+  lead: QueueLead;
+  position: number;
+  onClick?: () => void;
+}) {
+  const isHot = lead.tier === "HOT";
+
+  const cardStyle: React.CSSProperties =
+    position === 0
+      ? { transform: "translateX(0) scale(1)", opacity: 1, zIndex: 3, pointerEvents: "all", filter: "none" }
+      : position === 1
+      ? { transform: "translateX(58%) scale(0.88) translateZ(0)", opacity: 0.45, zIndex: 2, pointerEvents: "none", filter: "brightness(0.65)" }
+      : position === 2
+      ? { transform: "translateX(84%) scale(0.78) translateZ(0)", opacity: 0.2, zIndex: 1, pointerEvents: "none", filter: "brightness(0.4)" }
+      : position === -1
+      ? { transform: "translateX(-58%) scale(0.88) translateZ(0)", opacity: 0.45, zIndex: 2, pointerEvents: "none", filter: "brightness(0.65)" }
+      : { transform: "translateX(110%) scale(0.7)", opacity: 0, zIndex: 0, pointerEvents: "none" };
+
   return (
     <div
       onClick={onClick}
       style={{
-        padding: "11px 12px 11px 15px",
-        borderLeft: `3px solid ${selected ? "var(--accent)" : "transparent"}`,
-        borderBottom: "1px solid rgba(255,255,255,0.035)",
-        cursor: "pointer",
-        background: selected ? "rgba(59,130,246,0.07)" : undefined,
-        boxShadow: selected ? "inset 0 0 0 1px rgba(59,130,246,0.18)" : undefined,
-        transition: "background .12s",
+        position: "absolute",
+        width: "100%",
+        borderRadius: 14,
+        padding: "14px 16px 12px",
+        cursor: position !== 0 ? "pointer" : "default",
+        transition: "all 0.5s cubic-bezier(0.77,0,0.175,1)",
+        willChange: "transform, opacity",
+        background: isHot
+          ? "linear-gradient(135deg,#1e1520 0%,#1a1d26 60%)"
+          : "linear-gradient(135deg,#1a1c14 0%,#1a1d26 60%)",
+        border: isHot
+          ? "1px solid rgba(239,68,68,0.22)"
+          : "1px solid rgba(245,158,11,0.18)",
+        boxShadow: isHot
+          ? "0 0 0 1px rgba(239,68,68,0.07), 0 16px 48px rgba(0,0,0,0.55), 0 0 32px rgba(239,68,68,0.05), inset 0 1px 0 rgba(255,255,255,0.04)"
+          : "0 0 0 1px rgba(245,158,11,0.05), 0 16px 48px rgba(0,0,0,0.55), 0 0 32px rgba(245,158,11,0.04), inset 0 1px 0 rgba(255,255,255,0.04)",
+        ...cardStyle,
       }}
-      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.025)"; }}
-      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = ""; }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
-        <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 3, letterSpacing: "0.3px", flexShrink: 0, background: tier.bg, color: tier.color, border: `1px solid ${tier.border}` }}>
-          {lead.tier}
-        </span>
-        <span style={{ fontSize: 13, fontWeight: 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "var(--text-primary)" }}>
-          {lead.name}
-        </span>
-        {lead.unread && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />}
+      {/* Tier accent line */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 2,
+        borderRadius: "14px 14px 0 0",
+        background: isHot
+          ? "linear-gradient(90deg,#ef4444,transparent 70%)"
+          : "linear-gradient(90deg,#f59e0b,transparent 70%)",
+      }} />
+
+      {/* Top row: address + phone */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 10 }}>
+
+        {/* Left: identity */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <span style={{
+              fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 3, letterSpacing: "0.8px",
+              background: isHot ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.14)",
+              color: isHot ? "#f87171" : "#fbbf24",
+              border: isHot ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(245,158,11,0.3)",
+            }}>{lead.tier}</span>
+            {lead.chips.map(c => (
+              <span key={c} style={{
+                fontSize: 9, color: C.ts, padding: "1px 5px", borderRadius: 3,
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
+              }}>{c}</span>
+            ))}
+          </div>
+          <div style={{
+            fontSize: 16, fontWeight: 700, letterSpacing: "-0.5px",
+            lineHeight: 1.15, color: C.tp, marginBottom: 3,
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          }}>
+            {lead.address}
+          </div>
+          <div style={{ fontSize: 10, color: C.tm }}>
+            Score {lead.score} · {lead.sequenceName}
+          </div>
+        </div>
+
+        {/* Right: phone */}
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.5px", color: C.tm, textTransform: "uppercase", marginBottom: 5 }}>
+            Owner phone
+          </div>
+          {lead.bestPhone ? (
+            <>
+              <div style={{
+                fontSize: 18, fontWeight: 300, letterSpacing: "0.05em",
+                color: C.tp, fontVariantNumeric: "tabular-nums", marginBottom: 6, lineHeight: 1,
+              }}>
+                {lead.bestPhone}
+              </div>
+              <CopyButton value={lead.bestPhone} />
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: "#fbbf24", fontWeight: 500, fontStyle: "italic", marginBottom: 6 }}>
+                No number on record
+              </div>
+              <span style={{
+                fontSize: 9, fontWeight: 700, padding: "3px 8px", borderRadius: 4,
+                background: "rgba(245,158,11,0.1)", color: "#fbbf24",
+                border: "1px solid rgba(245,158,11,0.22)",
+              }}>BatchData · No match</span>
+            </>
+          )}
+        </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
-        <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 5px", borderRadius: 3, letterSpacing: "0.2px", flexShrink: 0, background: ch.bg, color: ch.color, border: `1px solid ${ch.border}` }}>
-          {lead.channel}
-        </span>
-        <span style={{ fontSize: 11, color: URGENCY_COLOR[lead.urgencyState], whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {lead.urgencyText}
-        </span>
+
+      {/* Touch history strip */}
+      <div style={{
+        borderTop: "1px solid rgba(255,255,255,0.05)",
+        paddingTop: 9,
+        display: "flex",
+        gap: 6,
+      }}>
+        {lead.contactLog.length === 0 ? (
+          <div style={{ fontSize: 10, color: C.tm, fontStyle: "italic" }}>No prior contact</div>
+        ) : (
+          lead.contactLog.slice(0, 3).map((t, i) => {
+            const ico = LOG_STYLES[t.channel];
+            return (
+              <div key={i} style={{
+                flex: 1, display: "flex", alignItems: "center", gap: 5,
+                padding: "4px 6px", borderRadius: 5,
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.05)",
+              }}>
+                <div style={{
+                  width: 16, height: 16, borderRadius: 3, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 8, fontWeight: 700, background: ico.bg, color: ico.color,
+                }}>{ico.label}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 9, fontWeight: 500, color: C.ts, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</div>
+                  <div style={{ fontSize: 9, color: C.tm }}>{t.date}</div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
-      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-        {lead.touches} {lead.touches === 1 ? "touch" : "touches"} · {lead.source} · {lead.lastContact}
+    </div>
+  );
+}
+
+// ── Left queue row ─────────────────────────────────────────────────────────
+function QueueRow({
+  lead, active, onClick,
+}: {
+  lead: QueueLead; active: boolean; onClick: () => void;
+}) {
+  const tc = TIER_COLOR[lead.tier];
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        padding: "8px 12px",
+        borderBottom: "1px solid rgba(255,255,255,0.03)",
+        borderLeft: `2px solid ${active ? tc : "transparent"}`,
+        cursor: "pointer",
+        background: active ? `${tc}0d` : "transparent",
+        transition: "background .1s",
+      }}
+      onMouseEnter={e => { if (!active) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.02)"; }}
+      onMouseLeave={e => { if (!active) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
+        <span style={{
+          fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 2,
+          background: lead.tier === "HOT" ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.12)",
+          color: lead.tier === "HOT" ? "#f87171" : "#fbbf24",
+        }}>{lead.tier}</span>
+        <span style={{ fontSize: 11, fontWeight: 500, color: C.tp, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {lead.address.split(",")[0]}
+        </span>
+        {!lead.bestPhone && (
+          <span style={{ fontSize: 8, fontWeight: 700, padding: "1px 4px", borderRadius: 2, background: "rgba(245,158,11,0.1)", color: "#fbbf24" }}>NO#</span>
+        )}
       </div>
+      <div style={{ fontSize: 10, color: C.tm }}>
+        Score {lead.score} · {lead.touches} touch{lead.touches !== 1 ? "es" : ""}
+      </div>
+    </div>
+  );
+}
+
+// ── Right rail section wrapper ─────────────────────────────────────────────
+function RailSection({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+      <div style={{
+        fontSize: 9, fontWeight: 700, letterSpacing: "0.6px",
+        color: C.tm, textTransform: "uppercase", marginBottom: 8,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>{label}</div>
+      {children}
     </div>
   );
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
 export default function OutreachScreen() {
-  const [leads,         setLeads]         = useState<QueueLead[]>([]);
-  const [loading,       setLoading]       = useState(true);
-  const [selectedId,    setSelectedId]    = useState<string | null>(null);
-  const [activeFilter,  setActiveFilter]  = useState<FilterPill>("All");
-  const [activeTab,     setActiveTab]     = useState<ComposerTab>("SMS");
-  const [draft,         setDraft]         = useState<string>("");
-  const [regenerating,  setRegenerating]  = useState(false);
-  const [hoveredTemplate, setHoveredTemplate] = useState<number | null>(null);
+  const [leads,      setLeads]      = useState<QueueLead[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [curIdx,     setCurIdx]     = useState(0);
+  const [draft,      setDraft]      = useState("");
+  const [aiOn,       setAiOn]       = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Fetch from Supabase ──────────────────────────────────────────────────
+  // ── Fetch ──────────────────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
       const supabase = createClient();
-
       const { data: scores, error } = await supabase
         .from("listing_scores")
         .select(`
-          id,
-          listing_id,
-          score,
-          confidence_score,
-          temperature,
-          evidence_summary,
-          recommended_action,
-          reason_codes,
-          outreach_sms,
-          outreach_email,
+          id, listing_id, score, confidence_score, temperature,
+          evidence_summary, recommended_action, reason_codes,
+          outreach_sms, outreach_email,
           listings (
-            address, city, state, zip,
-            list_price, source,
+            address, city, state, zip, list_price, source,
             best_phone, best_email, contact_confidence, enriched_at
           )
         `)
         .order("score", { ascending: false })
         .limit(20);
 
-      if (error) {
-        console.error("[OutreachScreen] fetch error:", error);
-        setLoading(false);
-        return;
-      }
-
-      const mapped = (scores ?? []).map((s) => mapScoreToLead(s as ScoreRow));
+      if (error) { console.error("[OutreachScreen] fetch:", error); setLoading(false); return; }
+      const mapped = (scores ?? []).map(s => mapScoreToLead(s as ScoreRow));
       setLeads(mapped);
-      if (mapped.length > 0) {
-        setSelectedId(mapped[0].id);
-        setDraft(mapped[0].drafts["SMS"]);
-      }
+      if (mapped.length > 0) setDraft(mapped[0].aiDraft);
       setLoading(false);
     }
-
     load();
   }, []);
 
-  const lead = leads.find(l => l.id === selectedId) ?? leads[0] ?? null;
-  const steps = lead ? buildSteps(lead.sequenceStep, lead.sequenceTotal) : [];
+  const lead = leads[curIdx] ?? null;
 
-  const filters: FilterPill[] = ["All", "Overdue", "Due today", "Upcoming"];
-
-  const filteredLeads = leads.filter(l => {
-    if (activeFilter === "All")       return true;
-    if (activeFilter === "Overdue")   return l.urgencyState === "overdue";
-    if (activeFilter === "Due today") return l.urgencyState === "due";
-    if (activeFilter === "Upcoming")  return l.urgencyState === "upcoming";
-    return true;
-  });
-
-  const TEMPLATES = [
-    { channel: "SMS",   name: "Price drop alert — seller",  desc: "Personalised outreach when a property signal spikes" },
-    { channel: "SMS",   name: "New signal match",            desc: "Surfaces a property based on scoring criteria" },
-    { channel: "Email", name: "Re-engagement (90d+)",        desc: "Low-pressure check-in for leads quiet for 3+ months" },
-    { channel: "Email", name: "Referral ask — past client",  desc: "Warm ask after a successful close or positive interaction" },
-  ];
-
-  function handleSelectLead(l: QueueLead) {
-    setSelectedId(l.id);
-    setActiveTab("SMS");
-    setDraft(l.drafts["SMS"]);
-    setRegenerating(false);
-  }
-
-  function handleTabChange(tab: ComposerTab) {
-    setActiveTab(tab);
-    if (lead) setDraft(lead.drafts[tab] ?? "");
-  }
-
-  function handleRegenerate() {
+  // Update draft when lead changes
+  useEffect(() => {
     if (!lead) return;
-    setRegenerating(true);
-    setDraft("");
-    setTimeout(() => {
-      setRegenerating(false);
-      setDraft(lead.aiOpening.replace(/^"|"$/g, ""));
-    }, 800);
-  }
+    setDraft(aiOn ? lead.aiDraft : "");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curIdx]);
 
-  async function handleSend() {
-    if (!lead) return;
-    if (activeTab === "Call script") {
-      await navigator.clipboard.writeText(draft);
-      return;
+  // Keyboard nav
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.target as HTMLElement).tagName === "TEXTAREA") return;
+      if (e.key === "ArrowRight") advance();
+      if (e.key === "ArrowLeft")  goTo((curIdx - 1 + leads.length) % leads.length);
     }
-    const channel: "sms" | "email" = activeTab === "SMS" ? "sms" : "email";
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curIdx, leads.length]);
+
+  const goTo = useCallback((i: number) => {
+    const target = leads[i];
+    if (!target) return;
+    setCurIdx(i);
+    setDraft(aiOn ? target.aiDraft : "");
+    setRegenerating(false);
+  }, [leads, aiOn]);
+
+  const advance = useCallback(() => {
+    goTo((curIdx + 1) % leads.length);
+  }, [curIdx, leads.length, goTo]);
+
+  // ── Outcome handlers ───────────────────────────────────────────────────
+  async function postOutreach(channel: "sms" | "email" | "call" | "skip") {
+    if (!lead) return;
     try {
-      const res  = await fetch("/api/outreach", {
-        method:  "POST",
+      const res = await fetch("/api/outreach", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
+        body: JSON.stringify({
           listing_id: lead.listingId,
           score_id:   lead.id,
           channel,
@@ -806,352 +631,569 @@ export default function OutreachScreen() {
       });
       const json = await res.json();
       if (json.ok) {
-        setLeads(prev => prev.map(l => {
-          if (l.id !== selectedId) return l;
-          return {
-            ...l,
-            touches:      json.touches     ?? l.touches,
-            lastContact:  json.lastContact ?? l.lastContact,
-            sequenceStep: json.nextStep    ?? l.sequenceStep,
-            touchStats: {
-              ...l.touchStats,
-              touches:     json.touches     ?? l.touchStats.touches,
-              lastContact: json.lastContact ?? l.touchStats.lastContact,
-            },
-            contactLog: json.newLogEntry
-              ? [json.newLogEntry, ...l.contactLog]
-              : l.contactLog,
-          };
+        setLeads(prev => prev.map(l => l.id !== lead.id ? l : {
+          ...l,
+          touches:      json.touches     ?? l.touches,
+          lastContact:  json.lastContact ?? l.lastContact,
+          sequenceStep: json.nextStep    ?? l.sequenceStep,
+          contactLog: json.newLogEntry ? [json.newLogEntry, ...l.contactLog] : l.contactLog,
         }));
       }
     } catch (err) {
-      console.error("[OutreachScreen] handleSend failed:", err);
+      console.error("[OutreachScreen] postOutreach:", err);
     }
   }
 
-  async function handleLogCall() {
-    if (!lead) return;
-    try {
-      const res  = await fetch("/api/outreach", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          listing_id: lead.listingId,
-          score_id:   lead.id,
-          channel:    "call",
-          body:       draft,
-          step:       lead.sequenceStep,
-        }),
-      });
-      const json = await res.json();
-      if (json.ok) {
-        setLeads(prev => prev.map(l => {
-          if (l.id !== selectedId) return l;
-          return {
-            ...l,
-            touches:      json.touches     ?? l.touches,
-            lastContact:  json.lastContact ?? l.lastContact,
-            sequenceStep: json.nextStep    ?? l.sequenceStep,
-            touchStats: {
-              ...l.touchStats,
-              touches:     json.touches     ?? l.touchStats.touches,
-              lastContact: json.lastContact ?? l.touchStats.lastContact,
-            },
-            contactLog: json.newLogEntry
-              ? [json.newLogEntry, ...l.contactLog]
-              : l.contactLog,
-          };
-        }));
-      }
-    } catch (err) {
-      console.error("[OutreachScreen] handleLogCall failed:", err);
-    }
+  async function handleSendSms()     { await postOutreach("sms");   advance(); }
+  async function handleCalled()      { await postOutreach("call");  advance(); }
+  async function handleNoAnswer()    { await postOutreach("call");  advance(); }
+  async function handleNotInterested(){ await postOutreach("skip"); advance(); }
+  async function handleSkip()        { await postOutreach("skip");  advance(); }
+
+  function handleSnooze() {
+    // Snooze: remove from today's queue, persists to tomorrow
+    setLeads(prev => {
+      const next = prev.filter((_, i) => i !== curIdx);
+      setCurIdx(Math.min(curIdx, next.length - 1));
+      return next;
+    });
   }
 
-  async function handleSkip() {
-    if (!lead) return;
-    try {
-      await fetch("/api/outreach", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          listing_id: lead.listingId,
-          score_id:   lead.id,
-          channel:    "skip",
-          body:       "",
-          step:       lead.sequenceStep,
-        }),
-      });
-    } catch (err) {
-      console.error("[OutreachScreen] handleSkip failed:", err);
-    }
-    // Advance to next lead regardless of network result
-    const currentIndex = filteredLeads.findIndex(l => l.id === selectedId);
-    const nextLead = filteredLeads[currentIndex + 1] ?? filteredLeads[0];
-    if (nextLead && nextLead.id !== selectedId) handleSelectLead(nextLead);
+  function handleDirectMail() {
+    // Direct mail: log intention, remove from calling queue
+    postOutreach("skip");
+    advance();
   }
 
-  function handleUseTemplate(t: typeof TEMPLATES[0]) {
+  function handleRegenerate() {
     if (!lead) return;
-    const tab: ComposerTab = t.channel === "SMS" ? "SMS" : "Email";
-    setActiveTab(tab);
-    setDraft(`[${t.name}] ${lead.drafts[tab]}`);
+    setRegenerating(true);
+    setDraft("");
+    setTimeout(() => {
+      setRegenerating(false);
+      setDraft(lead.aiDraft);
+    }, 700);
+  }
+
+  function handleToggleAI() {
+    const next = !aiOn;
+    setAiOn(next);
+    setDraft(next ? (lead?.aiDraft ?? "") : "");
   }
 
   function handleLeadRefreshed(updated: Partial<QueueLead>) {
-    setLeads(prev => prev.map(l => l.id === selectedId ? { ...l, ...updated } : l));
+    setLeads(prev => prev.map(l => l.id === lead?.id ? { ...l, ...updated } : l));
   }
 
-  const sendLabel =
-    activeTab === "SMS"        ? "Send SMS — log to CRM" :
-    activeTab === "Email"      ? "Send Email — log to CRM" :
-    "Copy script";
+  // ── Loading / empty ────────────────────────────────────────────────────
+  if (loading) return (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, color: C.tm, fontSize: 13 }}>
+      Loading outreach queue…
+    </div>
+  );
+  if (!lead) return (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, color: C.tm, fontSize: 13 }}>
+      Queue is clear. Ingest runs daily at 6:00 AM.
+    </div>
+  );
 
-  // ── Loading state ────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-base)", color: "var(--text-muted)", fontSize: 13 }}>
-        Loading outreach queue…
-      </div>
-    );
-  }
+  const hasNumber = !!lead.bestPhone;
+  const isHot     = lead.tier === "HOT";
 
-  if (!lead) {
-    return (
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-base)", color: "var(--text-muted)", fontSize: 13 }}>
-        No scored leads found. Ingest runs daily at 6:00 AM.
-      </div>
-    );
-  }
+  // BatchData confidence label
+  const bdLabel =
+    lead.contactConfidence === "high"   ? "BatchData · Verified" :
+    lead.contactConfidence === "medium" ? "BatchData · Likely match" :
+                                          "BatchData · No match";
+  const bdBg =
+    lead.contactConfidence === "high"   ? "rgba(16,185,129,0.12)"  :
+    lead.contactConfidence === "medium" ? "rgba(245,158,11,0.10)"  :
+                                          "rgba(239,68,68,0.08)";
+  const bdColor =
+    lead.contactConfidence === "high"   ? "#10b981" :
+    lead.contactConfidence === "medium" ? "#fbbf24" :
+                                          "#f87171";
+  const bdBorder =
+    lead.contactConfidence === "high"   ? "1px solid rgba(16,185,129,0.22)" :
+    lead.contactConfidence === "medium" ? "1px solid rgba(245,158,11,0.20)" :
+                                          "1px solid rgba(239,68,68,0.18)";
 
   return (
-    <div style={{ flex: 1, display: "flex", overflow: "hidden", background: "var(--bg-base)", fontFamily: "var(--font-ui)" }}>
+    <div style={{ flex: 1, display: "flex", overflow: "hidden", background: C.bg, fontFamily: "var(--font-ui)" }}>
 
-      {/* ══ LEFT RAIL ══ */}
-      <div style={{ width: 272, minWidth: 272, background: "var(--bg-surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "16px 14px 12px", borderBottom: "1px solid var(--border)" }}>
-          <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.3px", marginBottom: 10 }}>
-            Draft queue{" "}
-            <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginLeft: 4 }}>{filteredLeads.length} leads</span>
+      {/* ══ LEFT QUEUE ══ */}
+      <div style={{
+        width: 200, minWidth: 200,
+        background: C.surface,
+        borderRight: `1px solid ${C.border}`,
+        display: "flex", flexDirection: "column",
+      }}>
+        {/* Header */}
+        <div style={{ padding: "12px 12px 10px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.tm, letterSpacing: "0.5px", textTransform: "uppercase" }}>Queue</span>
+            <span style={{ fontSize: 10, color: C.tm }}>{leads.length} leads</span>
           </div>
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-            {filters.map(f => (
-              <span
-                key={f}
-                onClick={() => setActiveFilter(f)}
-                style={{
-                  padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 500,
-                  cursor: "pointer", userSelect: "none",
-                  border: activeFilter === f ? "1px solid rgba(59,130,246,0.35)" : "1px solid rgba(255,255,255,0.1)",
-                  color: activeFilter === f ? "#60a5fa" : "var(--text-secondary)",
-                  background: activeFilter === f ? "rgba(59,130,246,0.12)" : "transparent",
-                  transition: "background .1s",
-                }}
-              >
-                {f}
-              </span>
-            ))}
+          {/* Session progress */}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: C.tm, marginBottom: 4 }}>
+            <span>Today&apos;s session</span>
+            <span>{curIdx} of {leads.length}</span>
+          </div>
+          <div style={{ height: 2, background: "rgba(255,255,255,0.06)", borderRadius: 1, overflow: "hidden" }}>
+            <div style={{
+              height: 2, background: C.accent, borderRadius: 1,
+              width: `${leads.length > 0 ? (curIdx / leads.length) * 100 : 0}%`,
+              transition: "width .3s",
+            }} />
           </div>
         </div>
+        {/* Rows */}
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {filteredLeads.map(l => (
-            <QueueRow key={l.id} lead={l} selected={selectedId === l.id} onClick={() => handleSelectLead(l)} />
+          {leads.map((l, i) => (
+            <QueueRow key={l.id} lead={l} active={i === curIdx} onClick={() => goTo(i)} />
           ))}
         </div>
       </div>
 
       {/* ══ CENTER ══ */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--bg-base)", minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", background: C.bg }}>
 
-        {/* Contact identity header */}
-        <div style={{ padding: "13px 20px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, background: "var(--bg-surface)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(59,130,246,0.14)", border: "1px solid rgba(59,130,246,0.28)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#60a5fa", flexShrink: 0, letterSpacing: "-0.5px" }}>
-              {lead.address.slice(0, 2).toUpperCase()}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.4px", color: "var(--text-primary)" }}>{lead.address}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: TIER_STYLES[lead.tier].color, letterSpacing: "0.3px" }}>{lead.tier}</span>
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>· Score {lead.scores[0]?.value} · {lead.ask}</span>
-              </div>
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, padding: "4px 9px", borderRadius: 5, flexShrink: 0, background: lead.consentOk ? "rgba(16,185,129,0.08)" : "rgba(239,68,68,0.08)", border: lead.consentOk ? "1px solid rgba(16,185,129,0.22)" : "1px solid rgba(239,68,68,0.22)", color: lead.consentOk ? "#34d399" : "#f87171" }}>
-            {lead.consentOk ? <IcoConsentOk /> : <IcoConsentNo />}
-            {lead.consentOk ? "Contact verified" : "Contact unverified"}
+        {/* Topbar */}
+        <div style={{
+          height: 42, flexShrink: 0,
+          background: C.surface, borderBottom: `1px solid ${C.border}`,
+          display: "flex", alignItems: "center", padding: "0 20px", gap: 12,
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.2px" }}>Outreach</span>
+          <div style={{ width: 1, height: 14, background: C.border }} />
+          <span style={{ fontSize: 11, color: C.tm }}>Lead {curIdx + 1} of {leads.length}</span>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5,
+            fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+            background: "rgba(16,185,129,0.1)", color: "#34d399",
+            border: "1px solid rgba(16,185,129,0.2)",
+          }}>
+            <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#34d399", animation: "blink 2s infinite" }} />
+            Session active
           </div>
         </div>
 
-        {/* ══ COMPOSE CARD ══ */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 18px", gap: 0, background: "var(--bg-base)", overflow: "hidden" }}>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--bg-card)", borderRadius: "var(--r-md)", border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
-
-            {/* 1 — Channel tabs */}
-            <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
-              {(["SMS", "Email", "Call script"] as ComposerTab[]).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => handleTabChange(tab)}
-                  style={{ padding: "9px 16px", fontSize: 12, fontWeight: 500, color: activeTab === tab ? "#60a5fa" : "var(--text-muted)", background: "transparent", border: "none", borderBottom: activeTab === tab ? "2px solid var(--accent)" : "2px solid transparent", cursor: "pointer", fontFamily: "var(--font-ui)", transition: "color .1s" }}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-
-            {/* 2 — AI suggestion strip */}
-            <div style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)", flexShrink: 0, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-              <div
-                onClick={() => setDraft(lead.aiOpening.replace(/^"|"$/g, ""))}
-                style={{ flex: 1, cursor: "pointer" }}
-                title="Click to use"
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-                  <IcoStar />
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.5px", color: "#4a7aaa", textTransform: "uppercase" }}>AI suggestion — click to use</span>
-                </div>
-                <div style={{ fontSize: 12, color: "#7a99bb", lineHeight: 1.55, fontStyle: "italic" }}>
-                  {lead.aiOpening}
-                </div>
-              </div>
-              <button
-                onClick={handleRegenerate}
-                style={{ fontSize: 10, color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, padding: "3px 8px", borderRadius: 4, border: "1px solid rgba(255,255,255,0.07)", background: "transparent", fontFamily: "var(--font-ui)", flexShrink: 0, transition: "color .1s" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
-                onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
-              >
-                <IcoRegen /> Regen
-              </button>
-            </div>
-
-            {/* 3 — Editable message box */}
-            <textarea
-              value={regenerating ? "" : draft}
-              onChange={e => setDraft(e.target.value)}
-              placeholder={regenerating ? "Regenerating…" : "Edit your message…"}
-              style={{ flex: 1, width: "100%", background: "transparent", border: "none", padding: "12px 14px", fontSize: 13, color: "#e0e4f0", fontFamily: "var(--font-ui)", resize: "none", lineHeight: 1.75, outline: "none", boxSizing: "border-box", minHeight: 100 }}
-            />
-
-            {/* 4 — Send + secondary actions */}
-            <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.05)", flexShrink: 0, display: "flex", flexDirection: "column", gap: 7 }}>
-              <button
-                onClick={handleSend}
-                style={{ width: "100%", padding: "9px 16px", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.2px", cursor: "pointer", background: "var(--accent)", color: "#fff", border: "none", fontFamily: "var(--font-ui)", boxShadow: "0 1px 10px rgba(59,130,246,0.25)", transition: "background .1s" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "var(--accent-hover)")}
-                onMouseLeave={e => (e.currentTarget.style.background = "var(--accent)")}
-              >
-                {sendLabel}
-              </button>
-              <div style={{ display: "flex", gap: 6 }}>
-                {(["Skip", "Log call"] as const).map(label => (
-                  <button
-                    key={label}
-                    onClick={label === "Skip" ? handleSkip : handleLogCall}
-                    style={{ flex: 1, padding: "6px 10px", borderRadius: "var(--r-sm)", fontSize: 11, fontWeight: 500, cursor: "pointer", background: "transparent", color: "var(--text-muted)", border: "1px solid rgba(255,255,255,0.06)", fontFamily: "var(--font-ui)", transition: "color .1s" }}
-                    onMouseEnter={e => (e.currentTarget.style.color = "var(--text-secondary)")}
-                    onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+        {/* ── CAROUSEL STAGE — golden top 38.2% ── */}
+        <div style={{
+          height: "32vh",
+          minHeight: 190,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+          padding: "14px 0 18px",
+          // ambient glow
+          background: isHot
+            ? "radial-gradient(ellipse at 50% 100%, rgba(239,68,68,0.06) 0%, transparent 65%)"
+            : "radial-gradient(ellipse at 50% 100%, rgba(245,158,11,0.05) 0%, transparent 65%)",
+          transition: "background 0.6s ease",
+        }}>
+          {/* Card stack */}
+          <div style={{ position: "relative", width: "68%", maxWidth: 580, height: "100%" }}>
+            {leads.map((l, i) => {
+              const offset = i - curIdx;
+              const pos = offset === 0 ? 0 : offset === 1 ? 1 : offset === 2 ? 2 : offset === -1 ? -1 : 99;
+              return (
+                <LeadCard
+                  key={l.id}
+                  lead={l}
+                  position={pos}
+                  onClick={pos !== 0 ? () => goTo(i) : undefined}
+                />
+              );
+            })}
           </div>
+
+          {/* Nav dots */}
+          <div style={{
+            position: "absolute", bottom: 5, left: "50%", transform: "translateX(-50%)",
+            display: "flex", gap: 5, alignItems: "center",
+          }}>
+            {leads.map((l, i) => (
+              <div
+                key={i}
+                onClick={() => goTo(i)}
+                style={{
+                  height: 4, borderRadius: 2, cursor: "pointer",
+                  width: i === curIdx ? 16 : 4,
+                  background: i === curIdx
+                    ? (l.tier === "HOT" ? C.hot : C.warm)
+                    : "rgba(255,255,255,0.15)",
+                  transition: "all .3s",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* ── WORK AREA — golden bottom 61.8% ── */}
+        <div style={{
+          flex: 1,
+          display: "flex", flexDirection: "column",
+          padding: "14px 20px 16px",
+          borderTop: `1px solid ${C.border}`,
+          gap: 10, overflow: "hidden", minHeight: 0,
+        }}>
+
+          {/* Draft header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: C.tm, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                SMS Draft
+              </span>
+              {aiOn && (
+                <span style={{ fontSize: 10, color: "#4a7aaa", fontStyle: "italic" }}>
+                  — {lead.aiAngle}
+                </span>
+              )}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {/* Regen */}
+              {aiOn && (
+                <button
+                  onClick={handleRegenerate}
+                  style={{
+                    fontSize: 10, color: C.tm, cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: 3,
+                    padding: "3px 8px", borderRadius: 4,
+                    border: `1px solid ${C.border}`,
+                    background: "transparent", fontFamily: "var(--font-ui)", transition: "color .1s",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = C.ts)}
+                  onMouseLeave={e => (e.currentTarget.style.color = C.tm)}
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M8.5 5A3.5 3.5 0 1 1 5 1.5M8.5 1.5v3h-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Regen
+                </button>
+              )}
+              {/* AI toggle */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 10, color: C.tm }}>{aiOn ? "AI on" : "AI off"}</span>
+                <div
+                  onClick={handleToggleAI}
+                  style={{
+                    width: 28, height: 16, borderRadius: 8, cursor: "pointer",
+                    background: aiOn ? C.accent : "rgba(255,255,255,0.1)",
+                    border: aiOn ? `1px solid ${C.accent}` : "1px solid rgba(255,255,255,0.12)",
+                    position: "relative", transition: "background .2s",
+                  }}
+                >
+                  <div style={{
+                    position: "absolute", top: 2, left: 2,
+                    width: 10, height: 10, borderRadius: "50%",
+                    background: aiOn ? "#fff" : "rgba(255,255,255,0.5)",
+                    transform: aiOn ? "translateX(12px)" : "translateX(0)",
+                    transition: "transform .2s, background .2s",
+                  }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Textarea */}
+          <textarea
+            ref={draftRef}
+            value={regenerating ? "" : draft}
+            onChange={e => setDraft(e.target.value)}
+            placeholder={
+              regenerating ? "Regenerating…" :
+              !hasNumber   ? "No number — use action buttons below" :
+              !aiOn        ? "Write your own message…" :
+                             "Edit before sending…"
+            }
+            disabled={!hasNumber}
+            style={{
+              flex: 1, width: "100%", minHeight: 0,
+              background: C.card,
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: 10,
+              padding: "12px 14px",
+              fontSize: 13, color: "#e0e4f0",
+              fontFamily: "var(--font-ui)", resize: "none", lineHeight: 1.7,
+              outline: "none",
+              opacity: hasNumber ? 1 : 0.4,
+              transition: "border-color .15s, opacity .2s",
+            }}
+            onFocus={e => { e.currentTarget.style.borderColor = "rgba(59,130,246,0.3)"; }}
+            onBlur={e  => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
+          />
+
+          {/* Action buttons */}
+          {hasNumber ? (
+            <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
+              {/* Primary: Send SMS */}
+              <button
+                onClick={handleSendSms}
+                style={{
+                  flex: 1.4, padding: "10px 14px", borderRadius: 9,
+                  fontSize: 12, fontWeight: 600, letterSpacing: "-0.1px",
+                  cursor: "pointer", background: C.accent, color: "#fff",
+                  border: "none", fontFamily: "var(--font-ui)",
+                  boxShadow: "0 2px 14px rgba(59,130,246,0.22)",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+                  transition: "background .15s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#2563eb")}
+                onMouseLeave={e => (e.currentTarget.style.background = C.accent)}
+              >
+                ↑ Send SMS via FUB
+                <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.7 }}>Logs touch · advances sequence</span>
+              </button>
+
+              {/* Called */}
+              <button onClick={handleCalled} style={secondaryBtn("rgba(16,185,129,0.1)", "#34d399", "rgba(16,185,129,0.22)")}>
+                ✓ Called
+                <span style={subLabel}>Connected</span>
+              </button>
+
+              {/* No answer */}
+              <button onClick={handleNoAnswer} style={secondaryBtn("rgba(245,158,11,0.07)", "#fbbf24", "rgba(245,158,11,0.18)")}>
+                ○ No answer
+                <span style={subLabel}>Log attempt</span>
+              </button>
+
+              {/* Not interested */}
+              <button onClick={handleNotInterested} style={secondaryBtn("rgba(239,68,68,0.07)", "#f87171", "rgba(239,68,68,0.16)")}>
+                ✕ Not interested
+                <span style={subLabel}>Remove</span>
+              </button>
+
+              {/* Skip */}
+              <button onClick={handleSkip} style={{ ...secondaryBtn("transparent", C.tm, "rgba(255,255,255,0.07)"), flex: "0.7" }}>
+                Skip
+                <span style={subLabel}>Tomorrow</span>
+              </button>
+            </div>
+          ) : (
+            /* No-number action set */
+            <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
+              <button onClick={() => handleLeadRefreshed({})} style={secondaryBtn("rgba(245,158,11,0.1)", "#fbbf24", "rgba(245,158,11,0.22)", 1.4)}>
+                ⚡ Re-run skip trace
+                <span style={subLabel}>Via BatchData</span>
+              </button>
+              <button onClick={handleDirectMail} style={secondaryBtn("rgba(16,185,129,0.08)", "#34d399", "rgba(16,185,129,0.18)")}>
+                ✉ Direct mail
+                <span style={subLabel}>Property address</span>
+              </button>
+              <button onClick={handleSnooze} style={secondaryBtn("rgba(59,130,246,0.07)", "#60a5fa", "rgba(59,130,246,0.18)")}>
+                🕐 Snooze
+                <span style={subLabel}>Re-trace in 30d</span>
+              </button>
+              <button onClick={handleSkip} style={{ ...secondaryBtn("transparent", C.tm, "rgba(255,255,255,0.07)"), flex: "0.7" }}>
+                Skip
+                <span style={subLabel}>Remove</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* ══ RIGHT RAIL ══ */}
-      <div style={{ width: 240, minWidth: 240, background: "var(--bg-surface)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+      <div style={{
+        width: 248, minWidth: 248,
+        background: C.surface,
+        borderLeft: `1px solid ${C.border}`,
+        display: "flex", flexDirection: "column",
+        overflowY: "auto",
+      }}>
 
-        {/* 1 — Contact block */}
-        <div style={{ padding: "14px 14px 12px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase" }}>Contact</span>
-            {lead.contactConfidence && (
-              <span style={{
-                fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 4,
-                ...(lead.contactConfidence === "high"
-                  ? { background: "rgba(16,185,129,0.12)", color: "#10b981", border: "1px solid rgba(16,185,129,0.22)" }
-                  : { background: "rgba(245,158,11,0.10)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.20)" })
-              }}>
-                {lead.contactConfidence === "high" ? "Verified" : "Likely match"}
-              </span>
-            )}
-            {!lead.contactConfidence && (
-              <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 4, background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}>
-                Unverified
-              </span>
-            )}
-          </div>
-
-          {lead.bestPhone ? (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: lead.bestEmail ? 6 : 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#eceef5", letterSpacing: "0.02em" }}>{lead.bestPhone}</div>
-              <RailCopyButton value={lead.bestPhone} />
+        {/* 1 — FUB Status */}
+        <RailSection label="FUB Status">
+          {lead.fubThread ? (
+            <div style={{
+              display: "flex", alignItems: "flex-start", gap: 8,
+              padding: "8px 10px", borderRadius: 6,
+              background: "rgba(59,130,246,0.06)",
+              border: "1px solid rgba(59,130,246,0.14)",
+            }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.accent, marginTop: 4, flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: "#60a5fa", marginBottom: 2 }}>
+                  {lead.fubThreadLabel} —{" "}
+                  <span style={{ textDecoration: "underline", cursor: "pointer" }}>Open in Inbox →</span>
+                </div>
+                <div style={{ fontSize: 10, color: C.tm }}>{lead.fubLastActivity ?? "No recent activity"}</div>
+                {lead.fubPipelineStage && (
+                  <div style={{ fontSize: 10, color: C.tm, marginTop: 2 }}>Pipeline: {lead.fubPipelineStage}</div>
+                )}
+              </div>
             </div>
           ) : (
-            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: lead.bestEmail ? 6 : 0 }}>No phone found</div>
+            <div style={{ fontSize: 11, color: C.tm, fontStyle: "italic" }}>
+              No thread — cold lead, never contacted via FUB
+            </div>
           )}
+        </RailSection>
 
-          {lead.bestEmail && (
-            <div style={{ fontSize: 11, color: "#7a8399", marginTop: 4 }}>{lead.bestEmail}</div>
-          )}
-
-          {lead.canRefresh && (
-            <RailRefreshButton listingId={lead.listingId} onRefreshed={handleLeadRefreshed} />
-          )}
-        </div>
-
-        {/* 2 — Recent activity */}
-        <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 8 }}>Recent activity</div>
-          {lead.contactLog.length === 0 ? (
-            <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>No contact yet</div>
-          ) : (
+        {/* 2 — BatchData Contact */}
+        <RailSection label={
+          <>
+            Contact
+            <span style={{
+              fontSize: 8, fontWeight: 700, padding: "2px 6px", borderRadius: 3,
+              background: bdBg, color: bdColor, border: bdBorder,
+              display: "inline-flex", alignItems: "center", gap: 3,
+              textTransform: "none",
+            }}>
+              <span style={{ width: 4, height: 4, borderRadius: "50%", background: bdColor, display: "inline-block", flexShrink: 0 }} />
+              {bdLabel}
+            </span>
+          </>
+        }>
+          {lead.bestPhone ? (
             <>
-              {lead.contactLog.slice(0, 2).map((entry, i) => {
-                const ico = LOG_ICON_STYLES[entry.channel];
-                return (
-                  <div key={i} style={{ display: "flex", gap: 8, padding: "4px 0", alignItems: "flex-start" }}>
-                    <div style={{ width: 20, height: 20, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flexShrink: 0, marginTop: 1, background: ico.bg, color: ico.color }}>
-                      {ico.label}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 11, color: "#b0b8cc", lineHeight: 1.4 }}>{entry.title}</div>
-                      <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>{entry.date}</div>
-                    </div>
-                  </div>
-                );
-              })}
-              {lead.contactLog.length > 2 && (
-                <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 6, cursor: "pointer" }}>
-                  View all activity ({lead.contactLog.length})
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#eceef5", letterSpacing: "0.02em" }}>{lead.bestPhone}</span>
+                <CopyButton value={lead.bestPhone} />
+              </div>
+              {lead.bestPhoneType && (
+                <div style={{ fontSize: 10, color: C.tm, marginBottom: lead.bestEmail ? 5 : 0 }}>
+                  {lead.bestPhoneType}
+                  {lead.bestPhoneDnc && <span style={{ marginLeft: 6, color: "#f87171", fontWeight: 700 }}>· DNC</span>}
                 </div>
               )}
+              {lead.bestEmail && (
+                <div style={{ fontSize: 11, color: C.ts, marginTop: 4 }}>{lead.bestEmail}</div>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 11, color: "#fbbf24", fontStyle: "italic", marginBottom: 4 }}>No phone found</div>
+              {lead.bestEmail && <div style={{ fontSize: 11, color: C.ts, marginBottom: 4 }}>{lead.bestEmail}</div>}
+              {lead.canRefresh && <RetraceButton listingId={lead.listingId} onRefreshed={handleLeadRefreshed} />}
             </>
           )}
-        </div>
+        </RailSection>
 
-        {/* 3 — Score (2 metrics only) */}
-        <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.5px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 10 }}>Score</div>
-          {lead.scores.filter(s => s.label === "Opportunity" || s.label === "Contact risk").map(s => (
-            <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", minWidth: 76 }}>{s.label}</div>
-              <div style={{ flex: 1, height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                <div style={{ width: `${s.value}%`, height: 3, borderRadius: 2, background: s.color }} />
+        {/* 3 — Signals */}
+        <RailSection label="Signals — why this lead">
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {lead.signals.length > 0 ? lead.signals.map((s, i) => (
+              <div key={i} style={{
+                fontSize: 11, padding: "5px 8px", borderRadius: 5, lineHeight: 1.35,
+                background: "rgba(255,255,255,0.02)",
+                borderLeft: `2px solid ${SIG_COLOR[s.color]}40`,
+                color: SIG_COLOR[s.color],
+              }}>{s.text}</div>
+            )) : (
+              <div style={{ fontSize: 11, color: C.tm, fontStyle: "italic" }}>
+                {lead.evidenceSummary ?? "Surfaced by daily AI scoring run."}
               </div>
-              <div style={{ fontSize: 10, color: s.color, minWidth: 18, textAlign: "right" }}>{s.value}</div>
+            )}
+          </div>
+        </RailSection>
+
+        {/* 4 — Score */}
+        <RailSection label="Score">
+          <div style={{
+            fontSize: 36, fontWeight: 700, letterSpacing: "-1.5px", lineHeight: 1, marginBottom: 3,
+            color: lead.tier === "HOT" ? "#f87171" : "#fbbf24",
+          }}>{lead.score}</div>
+          <div style={{ fontSize: 10, color: C.tm }}>
+            {lead.tier} · {lead.chips.join(" · ")}
+          </div>
+        </RailSection>
+
+        {/* 5 — Sequence */}
+        <RailSection label="Sequence">
+          <div style={{ display: "flex", gap: 3, marginBottom: 5 }}>
+            {Array.from({ length: lead.sequenceTotal }, (_, i) => (
+              <div key={i} style={{
+                flex: 1, height: 4, borderRadius: 2,
+                background:
+                  i < lead.sequenceStep - 1 ? "rgba(16,185,129,0.5)" :
+                  i === lead.sequenceStep - 1 ? C.accent :
+                  "rgba(255,255,255,0.07)",
+                transition: "background .3s",
+              }} />
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: C.tm }}>
+            Step {lead.sequenceStep} of {lead.sequenceTotal} — {lead.sequenceName}
+          </div>
+        </RailSection>
+
+        {/* 6 — Last 3 touches */}
+        <RailSection label="Last touches">
+          {lead.contactLog.length === 0 ? (
+            <div style={{ fontSize: 11, color: C.tm, fontStyle: "italic" }}>No prior contact</div>
+          ) : (
+            lead.contactLog.slice(0, 3).map((t, i) => {
+              const ico = LOG_STYLES[t.channel];
+              return (
+                <div key={i} style={{
+                  display: "flex", alignItems: "flex-start", gap: 7,
+                  padding: "5px 0",
+                  borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.03)" : "none",
+                }}>
+                  <div style={{
+                    width: 20, height: 20, borderRadius: 4, flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 9, fontWeight: 700, marginTop: 1,
+                    background: ico.bg, color: ico.color,
+                  }}>{ico.label}</div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: C.ts }}>{t.title}</div>
+                    <div style={{ fontSize: 10, color: C.tm, marginTop: 1 }}>{t.date}</div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </RailSection>
+
+        {/* 7 — Owner info */}
+        <RailSection label="Owner info">
+          {[
+            ["Type",         lead.ownerType],
+            ["Mailing addr", lead.mailingAddress ?? "Unknown"],
+            ["Hold period",  lead.holdPeriod ?? "Unknown"],
+            ["Source",       lead.source],
+          ].map(([k, v]) => (
+            <div key={k} style={{
+              display: "flex", justifyContent: "space-between",
+              marginBottom: 6, gap: 8,
+            }}>
+              <span style={{ fontSize: 10, color: C.tm, flexShrink: 0 }}>{k}</span>
+              <span style={{ fontSize: 10, color: C.ts, textAlign: "right" }}>{v}</span>
             </div>
           ))}
-        </div>
-
-        {/* 4 — Context (collapsible, unchanged) */}
-        <ContextSection lead={lead} />
+        </RailSection>
 
       </div>
+
+      {/* Blink keyframe */}
+      <style>{`
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+      `}</style>
     </div>
   );
 }
+
+// ── Style helpers ──────────────────────────────────────────────────────────
+function secondaryBtn(
+  bg: string, color: string, border: string, flex: number = 1
+): React.CSSProperties {
+  return {
+    flex,
+    padding: "10px 10px",
+    borderRadius: 9,
+    fontSize: 12, fontWeight: 600, letterSpacing: "-0.1px",
+    cursor: "pointer",
+    background: bg, color, border: `1px solid ${border}`,
+    fontFamily: "var(--font-ui)",
+    transition: "all .15s",
+    display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+  };
+}
+
+const subLabel: React.CSSProperties = {
+  fontSize: 9, fontWeight: 400, opacity: 0.65,
+};
