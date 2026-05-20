@@ -536,7 +536,7 @@ export default function OutreachScreen() {
           transition: "background 0.6s ease",
         }}>
           {/* Card stack */}
-          <div style={{ position: "relative", width: "66%", maxWidth: 560, height: "100%", top: "6%" }}>
+          <div style={{ position: "relative", width: "66%", maxWidth: 560, height: "100%", top: "14%" }}>
             {leads.map((l, i) => {
               const offset = i - curIdx;
               const pos = offset === 0 ? 0 : offset === 1 ? 1 : offset === 2 ? 2 : offset === -1 ? -1 : 99;
@@ -568,12 +568,7 @@ export default function OutreachScreen() {
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = C.tp; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = C.ts; }}
           >›</button>
-          {/* Nav dots */}
-          <div style={{ position: "absolute", bottom: 5, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 5, alignItems: "center" }}>
-            {leads.map((l, i) => (
-              <div key={i} onClick={() => goTo(i)} style={{ height: 4, borderRadius: 2, cursor: "pointer", width: i === curIdx ? 16 : 4, background: i === curIdx ? (l.tier === "HOT" ? C.hot : C.warm) : "rgba(255,255,255,0.15)", transition: "all .3s" }} />
-            ))}
-          </div>
+          
         </div>
 
         {/* ── WORK AREA ── */}
