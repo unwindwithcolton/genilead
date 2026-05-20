@@ -582,9 +582,15 @@ export default function OutreachScreen() {
         .from("listing_scores")
         .select(`id, listing_id, score, confidence_score, temperature, evidence_summary, recommended_action, reason_codes, outreach_sms, outreach_email, listings ( address, city, state, zip, list_price, source, best_phone, best_email, contact_confidence, enriched_at, skip_trace_attempts )`)
         .order("score", { ascending: false })
-        .limit(20);
+        .limit(100);
       if (error) { console.error("[OutreachScreen] fetch:", error); setLoading(false); return; }
-      const mapped = prioritizeLeads((scores ?? []).map(s => mapScoreToLead(s as ScoreRow)));
+      const seen = new Set<string>();
+      const deduped = (scores ?? []).filter(s => {
+        if (seen.has(s.listing_id)) return false;
+        seen.add(s.listing_id);
+        return true;
+      });
+      const mapped = prioritizeLeads(deduped.map(s => mapScoreToLead(s as ScoreRow)));
       setLeads(mapped);
       if (mapped.length > 0) setDraft(mapped[0].aiDraft);
       setLoading(false);
