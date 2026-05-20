@@ -536,13 +536,38 @@ export default function OutreachScreen() {
           transition: "background 0.6s ease",
         }}>
           {/* Card stack */}
-          <div style={{ position: "relative", width: "66%", maxWidth: 560, height: "100%" }}>
+          <div style={{ position: "relative", width: "66%", maxWidth: 560, height: "100%", top: "6%" }}>
             {leads.map((l, i) => {
               const offset = i - curIdx;
               const pos = offset === 0 ? 0 : offset === 1 ? 1 : offset === 2 ? 2 : offset === -1 ? -1 : 99;
               return <LeadCard key={l.id} lead={l} position={pos} onClick={pos !== 0 ? () => goTo(i) : undefined} />;
             })}
           </div>
+          {/* Nav arrows */}
+          <button
+            onClick={() => goTo((curIdx - 1 + leads.length) % leads.length)}
+            style={{
+              position: "absolute", left: "calc(17% - 36px)", top: "50%", transform: "translateY(-50%)",
+              width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.05)", color: C.ts, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 14, fontFamily: "var(--font-ui)", transition: "all .15s", zIndex: 10,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = C.tp; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = C.ts; }}
+          >‹</button>
+          <button
+            onClick={advance}
+            style={{
+              position: "absolute", right: "calc(17% - 36px)", top: "50%", transform: "translateY(-50%)",
+              width: 32, height: 32, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.05)", color: C.ts, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 14, fontFamily: "var(--font-ui)", transition: "all .15s", zIndex: 10,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = C.tp; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = C.ts; }}
+          >›</button>
           {/* Nav dots */}
           <div style={{ position: "absolute", bottom: 5, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 5, alignItems: "center" }}>
             {leads.map((l, i) => (
