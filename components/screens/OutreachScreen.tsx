@@ -881,8 +881,11 @@ export default function OutreachScreen() {
         </RailSection>
 
         <RailSection label="Score">
-          <div style={{ fontSize: 36, fontWeight: 700, letterSpacing: "-1.5px", lineHeight: 1, marginBottom: 3, color: lead.tier === "HOT" ? "#f87171" : "#fbbf24" }}>{lead.score}</div>
-          <div style={{ fontSize: 10, color: C.tm }}>{lead.tier} · {lead.chips.join(" · ")}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
+            <div style={{ fontSize: 36, fontWeight: 700, letterSpacing: "-1.5px", lineHeight: 1, color: lead.tier === "HOT" ? "#f87171" : "#fbbf24" }}>{lead.score}</div>
+            <span style={{ fontSize: 13, fontWeight: 800, padding: "4px 10px", borderRadius: 4, letterSpacing: "0.8px", background: lead.tier === "HOT" ? "rgba(239,68,68,0.18)" : lead.tier === "WARM" ? "rgba(245,158,11,0.14)" : "rgba(255,255,255,0.06)", color: lead.tier === "HOT" ? "#f87171" : lead.tier === "WARM" ? "#fbbf24" : C.ts, border: lead.tier === "HOT" ? "1px solid rgba(239,68,68,0.3)" : lead.tier === "WARM" ? "1px solid rgba(245,158,11,0.3)" : "1px solid rgba(255,255,255,0.08)" }}>{lead.tier}</span>
+          </div>
+          <div style={{ fontSize: 10, color: C.tm }}>{lead.chips.join(" · ")}</div>
         </RailSection>
 
         <RailSection label="Sequence">
