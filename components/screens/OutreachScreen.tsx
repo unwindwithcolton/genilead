@@ -698,10 +698,18 @@ export default function OutreachScreen() {
             ? "radial-gradient(ellipse at 50% 120%,rgba(239,68,68,0.22) 0%,rgba(239,68,68,0.06) 40%,transparent 70%)"
             : "radial-gradient(ellipse at 50% 120%,rgba(245,158,11,0.18) 0%,rgba(245,158,11,0.05) 40%,transparent 70%)",
           transition: "background 0.8s cubic-bezier(0.4,0,0.2,1)",
-          animation: "glowPulse 3s ease-in-out infinite",
         }}>
+          {/* Animated underglow layer — sits behind everything */}
+          <div style={{
+            position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0,
+            background: isHot
+              ? "radial-gradient(ellipse at 50% 120%,rgba(239,68,68,0.28) 0%,rgba(239,68,68,0.08) 45%,transparent 70%)"
+              : "radial-gradient(ellipse at 50% 120%,rgba(245,158,11,0.22) 0%,rgba(245,158,11,0.06) 45%,transparent 70%)",
+            animation: "glowPulse 3s ease-in-out infinite",
+            transition: "background 0.8s cubic-bezier(0.4,0,0.2,1)",
+          }} />
           {/* Card stack */}
-          <div style={{ position: "relative", width: "66%", maxWidth: 560, height: "100%", top: "14%" }}>
+          <div style={{ position: "relative", width: "66%", maxWidth: 560, height: "100%", top: "14%", zIndex: 2 }}>
             {leads.map((l, i) => {
               const offset = i - curIdx;
               const pos = offset === 0 ? 0 : offset === 1 ? 1 : offset === 2 ? 2 : offset === -1 ? -1 : 99;
