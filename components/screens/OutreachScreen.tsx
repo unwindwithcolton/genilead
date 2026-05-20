@@ -47,6 +47,7 @@ interface QueueLead {
   fubPipelineStage: string | null;
   outreachMode: OutreachMode;
   stateCode: string | null;
+  skipTraceAttempts: number;
 }
 
 // ── Outreach mode (legal guardrails) ──────────────────────────────────────
@@ -331,6 +332,7 @@ function mapScoreToLead(s: ScoreRow): QueueLead {
       trusted ? (listing?.is_dnc ?? false) : false,
     ),
     stateCode: listing?.state ?? null,
+    skipTraceAttempts: listing?.skip_trace_attempts ?? 0,
   };
 }
 
@@ -427,10 +429,7 @@ function LeadCard({ lead, position, onClick }: { lead: QueueLead; position: numb
               <CopyButton value={lead.bestPhone} />
             </>
           ) : (
-            <>
-              <div style={{ fontSize: 12, color: "#fbbf24", fontWeight: 500, fontStyle: "italic", marginBottom: 6 }}>No number on record</div>
-              <span style={{ fontSize: 9, fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: "rgba(245,158,11,0.1)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.22)" }}>BatchData · No match</span>
-            </>
+            <span style={{ fontSize: 9, fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: "rgba(245,158,11,0.1)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.22)" }}>BatchData · No match</span>
           )}
         </div>
       </div>
@@ -581,7 +580,7 @@ export default function OutreachScreen() {
       const supabase = createClient();
       const { data: scores, error } = await supabase
         .from("listing_scores")
-        .select(`id, listing_id, score, confidence_score, temperature, evidence_summary, recommended_action, reason_codes, outreach_sms, outreach_email, listings ( address, city, state, zip, list_price, source, best_phone, best_email, contact_confidence, enriched_at )`)
+        .select(`id, listing_id, score, confidence_score, temperature, evidence_summary, recommended_action, reason_codes, outreach_sms, outreach_email, listings ( address, city, state, zip, list_price, source, best_phone, best_email, contact_confidence, enriched_at, skip_trace_attempts )`)
         .order("score", { ascending: false })
         .limit(20);
       if (error) { console.error("[OutreachScreen] fetch:", error); setLoading(false); return; }
@@ -862,7 +861,12 @@ export default function OutreachScreen() {
             </>
           ) : (
             <>
-              <div style={{ fontSize: 11, color: "#fbbf24", fontStyle: "italic", marginBottom: 4 }}>No phone found</div>
+              <div style={{ fontSize: 10, color: C.tm, marginBottom: 6 }}>
+                BatchData · No match
+                {lead.skipTraceAttempts > 0 && (
+                  <span style={{ marginLeft: 6, color: C.tm }}>· {lead.skipTraceAttempts} attempt{lead.skipTraceAttempts !== 1 ? "s" : ""}</span>
+                )}
+              </div>
               {lead.bestEmail && <div style={{ fontSize: 11, color: C.ts, marginBottom: 4 }}>{lead.bestEmail}</div>}
               {lead.canRefresh && <RetraceButton listingId={lead.listingId} onRefreshed={handleLeadRefreshed} />}
             </>

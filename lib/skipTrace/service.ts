@@ -187,7 +187,7 @@ async function updateListingsSafe(
 ) {
   const { data: current } = await supabase
     .from('listings')
-    .select('best_phone, best_email, contact_confidence')
+    .select('best_phone, best_email, contact_confidence, skip_trace_attempts')
     .eq('id', listing_id)
     .single();
 
@@ -208,9 +208,10 @@ async function updateListingsSafe(
     .update({
       ...(!alreadyTrustedPhone && bestPhone ? { best_phone: bestPhone } : {}),
       ...(!alreadyTrustedEmail && bestEmail ? { best_email: bestEmail } : {}),
-      contact_confidence: confidence.contact_confidence,
-      enriched_at:        enrichedAt,
-      enrichment_status:  status,
+      contact_confidence:    confidence.contact_confidence,
+      enriched_at:           enrichedAt,
+      enrichment_status:     status,
+      skip_trace_attempts:   (current?.skip_trace_attempts ?? 0) + 1,
     })
     .eq('id', listing_id);
 }
