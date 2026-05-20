@@ -411,29 +411,31 @@ function LeadCard({ lead, position, onClick }: { lead: QueueLead; position: numb
         : "0 0 0 1px rgba(245,158,11,0.05),0 16px 48px rgba(0,0,0,0.55),0 0 32px rgba(245,158,11,0.04),inset 0 1px 0 rgba(255,255,255,0.04)",
       ...cardStyle,
     }}>
+      {/* Top accent bar */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, borderRadius: "14px 14px 0 0", background: isHot ? "linear-gradient(90deg,#ef4444,transparent 70%)" : "linear-gradient(90deg,#f59e0b,transparent 70%)" }} />
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14 }}>
-        {/* Left — address + chips */}
+
+      {/* Row 1 — address left, score+tier right */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.5px", lineHeight: 1.15, color: C.tp, marginBottom: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lead.address}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-            {lead.chips.map(c => <span key={c} style={{ fontSize: 9, color: C.ts, padding: "1px 5px", borderRadius: 3, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>{c}</span>)}
-          </div>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.5px", lineHeight: 1.2, color: C.tp, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lead.address}</div>
         </div>
-        {/* Right — score + tier badge */}
-        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-2px", lineHeight: 1, color: isHot ? "#f87171" : "#fbbf24", fontVariantNumeric: "tabular-nums" }}>{lead.score}</div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 4, letterSpacing: "0.8px", background: isHot ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.14)", color: isHot ? "#f87171" : "#fbbf24", border: isHot ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(245,158,11,0.3)" }}>{lead.tier}</span>
-          </div>
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 7 }}>
+          <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-2px", lineHeight: 1, color: isHot ? "#f87171" : "#fbbf24", fontVariantNumeric: "tabular-nums" }}>{lead.score}</div>
+          <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 4, letterSpacing: "0.8px", background: isHot ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.14)", color: isHot ? "#f87171" : "#fbbf24", border: isHot ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(245,158,11,0.3)" }}>{lead.tier}</span>
         </div>
       </div>
-      {/* Phone row */}
-      <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+
+      {/* Row 2 — chips */}
+      <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap", marginBottom: 12 }}>
+        {lead.chips.map(c => <span key={c} style={{ fontSize: 9, fontWeight: 500, color: C.ts, padding: "2px 6px", borderRadius: 3, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>{c}</span>)}
+      </div>
+
+      {/* Row 3 — phone */}
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.5px", color: C.tm, textTransform: "uppercase" }}>Owner phone</div>
         {lead.bestPhone ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ fontSize: 15, fontWeight: 300, letterSpacing: "0.05em", color: C.tp, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{lead.bestPhone}</div>
+            <div style={{ fontSize: 16, fontWeight: 400, letterSpacing: "0.04em", color: C.tp, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{lead.bestPhone}</div>
             <CopyButton value={lead.bestPhone} />
           </div>
         ) : (
@@ -686,7 +688,7 @@ export default function OutreachScreen() {
 
         {/* ── CAROUSEL STAGE ── */}
         <div style={{
-          height: "30vh", minHeight: 185, flexShrink: 0,
+          height: "38vh", minHeight: 220, flexShrink: 0,
           display: "flex", alignItems: "center", justifyContent: "center",
           position: "relative", padding: "14px 0 18px",
           overflow: "hidden", // ← fixes card bleed into right rail
