@@ -531,9 +531,10 @@ export default function OutreachScreen() {
           position: "relative", padding: "14px 0 18px",
           overflow: "hidden", // ← fixes card bleed into right rail
           background: isHot
-            ? "radial-gradient(ellipse at 50% 100%,rgba(239,68,68,0.06) 0%,transparent 65%)"
-            : "radial-gradient(ellipse at 50% 100%,rgba(245,158,11,0.05) 0%,transparent 65%)",
-          transition: "background 0.6s ease",
+            ? "radial-gradient(ellipse at 50% 120%,rgba(239,68,68,0.22) 0%,rgba(239,68,68,0.06) 40%,transparent 70%)"
+            : "radial-gradient(ellipse at 50% 120%,rgba(245,158,11,0.18) 0%,rgba(245,158,11,0.05) 40%,transparent 70%)",
+          transition: "background 0.8s cubic-bezier(0.4,0,0.2,1)",
+          animation: "glowPulse 3s ease-in-out infinite",
         }}>
           {/* Card stack */}
           <div style={{ position: "relative", width: "66%", maxWidth: 560, height: "100%", top: "14%" }}>
@@ -717,7 +718,10 @@ export default function OutreachScreen() {
 
       </div>
 
-      <style>{`@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
+      <style>{`
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        @keyframes glowPulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+      `}</style>
     </div>
   );
 }
