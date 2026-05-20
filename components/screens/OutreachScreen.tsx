@@ -412,42 +412,33 @@ function LeadCard({ lead, position, onClick }: { lead: QueueLead; position: numb
       ...cardStyle,
     }}>
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, borderRadius: "14px 14px 0 0", background: isHot ? "linear-gradient(90deg,#ef4444,transparent 70%)" : "linear-gradient(90deg,#f59e0b,transparent 70%)" }} />
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14 }}>
+        {/* Left — address + chips */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-            <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 3, letterSpacing: "0.8px", background: isHot ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.14)", color: isHot ? "#f87171" : "#fbbf24", border: isHot ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(245,158,11,0.3)" }}>{lead.tier}</span>
+          <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.5px", lineHeight: 1.15, color: C.tp, marginBottom: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lead.address}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
             {lead.chips.map(c => <span key={c} style={{ fontSize: 9, color: C.ts, padding: "1px 5px", borderRadius: 3, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>{c}</span>)}
           </div>
-          <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.5px", lineHeight: 1.15, color: C.tp, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lead.address}</div>
-          <div style={{ fontSize: 10, color: C.tm }}>Score {lead.score} · {lead.sequenceName}</div>
         </div>
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.5px", color: C.tm, textTransform: "uppercase", marginBottom: 5 }}>Owner phone</div>
-          {lead.bestPhone ? (
-            <>
-              <div style={{ fontSize: 18, fontWeight: 300, letterSpacing: "0.05em", color: C.tp, fontVariantNumeric: "tabular-nums", marginBottom: 6, lineHeight: 1 }}>{lead.bestPhone}</div>
-              <CopyButton value={lead.bestPhone} />
-            </>
-          ) : (
-            <span style={{ fontSize: 9, fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: "rgba(245,158,11,0.1)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.22)" }}>BatchData · No match</span>
-          )}
+        {/* Right — score + tier badge */}
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-2px", lineHeight: 1, color: isHot ? "#f87171" : "#fbbf24", fontVariantNumeric: "tabular-nums" }}>{lead.score}</div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 4, letterSpacing: "0.8px", background: isHot ? "rgba(239,68,68,0.18)" : "rgba(245,158,11,0.14)", color: isHot ? "#f87171" : "#fbbf24", border: isHot ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(245,158,11,0.3)" }}>{lead.tier}</span>
+          </div>
         </div>
       </div>
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 9, display: "flex", gap: 6 }}>
-        {lead.contactLog.length === 0 ? (
-          <div style={{ fontSize: 10, color: C.tm, fontStyle: "italic" }}>No prior contact</div>
-        ) : lead.contactLog.slice(0, 3).map((t, i) => {
-          const ico = LOG_STYLES[t.channel];
-          return (
-            <div key={i} style={{ flex: 1, display: "flex", alignItems: "center", gap: 5, padding: "4px 6px", borderRadius: 5, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <div style={{ width: 16, height: 16, borderRadius: 3, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, background: ico.bg, color: ico.color }}>{ico.label}</div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 9, fontWeight: 500, color: C.ts, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</div>
-                <div style={{ fontSize: 9, color: C.tm }}>{t.date}</div>
-              </div>
-            </div>
-          );
-        })}
+      {/* Phone row */}
+      <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.5px", color: C.tm, textTransform: "uppercase" }}>Owner phone</div>
+        {lead.bestPhone ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ fontSize: 15, fontWeight: 300, letterSpacing: "0.05em", color: C.tp, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{lead.bestPhone}</div>
+            <CopyButton value={lead.bestPhone} />
+          </div>
+        ) : (
+          <span style={{ fontSize: 9, fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: "rgba(245,158,11,0.1)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.22)" }}>BatchData · No match</span>
+        )}
       </div>
     </div>
   );
