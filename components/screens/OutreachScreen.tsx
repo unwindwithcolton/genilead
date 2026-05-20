@@ -45,6 +45,158 @@ interface QueueLead {
   fubThreadLabel: string;
   fubLastActivity: string | null;
   fubPipelineStage: string | null;
+  outreachMode: OutreachMode;
+  stateCode: string | null;
+}
+
+// ── Outreach mode (legal guardrails) ──────────────────────────────────────
+type OutreachMode = "sms_and_call" | "call_only" | "no_number" | "dnc_blocked";
+
+// Area code → UTC offset (standard time). Covers US/Canada.
+const AREA_CODE_TZ: Record<string, string> = {
+  "201":"America/New_York","202":"America/New_York","203":"America/New_York",
+  "205":"America/Chicago","206":"America/Los_Angeles","207":"America/New_York",
+  "208":"America/Boise","209":"America/Los_Angeles","210":"America/Chicago",
+  "212":"America/New_York","213":"America/Los_Angeles","214":"America/Chicago",
+  "215":"America/New_York","216":"America/New_York","217":"America/Chicago",
+  "218":"America/Chicago","219":"America/Chicago","224":"America/Chicago",
+  "225":"America/Chicago","228":"America/Chicago","229":"America/New_York",
+  "231":"America/Detroit","234":"America/New_York","239":"America/New_York",
+  "240":"America/New_York","248":"America/Detroit","251":"America/Chicago",
+  "252":"America/New_York","253":"America/Los_Angeles","254":"America/Chicago",
+  "256":"America/Chicago","260":"America/Indiana/Indianapolis","262":"America/Chicago",
+  "267":"America/New_York","269":"America/Detroit","270":"America/Chicago",
+  "272":"America/New_York","276":"America/New_York","281":"America/Chicago",
+  "301":"America/New_York","302":"America/New_York","303":"America/Denver",
+  "304":"America/New_York","305":"America/New_York","307":"America/Denver",
+  "308":"America/Chicago","309":"America/Chicago","310":"America/Los_Angeles",
+  "312":"America/Chicago","313":"America/Detroit","314":"America/Chicago",
+  "315":"America/New_York","316":"America/Chicago","317":"America/Indiana/Indianapolis",
+  "318":"America/Chicago","319":"America/Chicago","320":"America/Chicago",
+  "321":"America/New_York","323":"America/Los_Angeles","325":"America/Chicago",
+  "330":"America/New_York","331":"America/Chicago","334":"America/Chicago",
+  "336":"America/New_York","337":"America/Chicago","339":"America/New_York",
+  "340":"America/Puerto_Rico","347":"America/New_York","351":"America/New_York",
+  "352":"America/New_York","360":"America/Los_Angeles","361":"America/Chicago",
+  "386":"America/New_York","401":"America/New_York","402":"America/Chicago",
+  "404":"America/New_York","405":"America/Chicago","406":"America/Denver",
+  "407":"America/New_York","408":"America/Los_Angeles","409":"America/Chicago",
+  "410":"America/New_York","412":"America/New_York","413":"America/New_York",
+  "414":"America/Chicago","415":"America/Los_Angeles","417":"America/Chicago",
+  "419":"America/New_York","423":"America/New_York","424":"America/Los_Angeles",
+  "425":"America/Los_Angeles","430":"America/Chicago","432":"America/Chicago",
+  "434":"America/New_York","435":"America/Denver","440":"America/New_York",
+  "442":"America/Los_Angeles","443":"America/New_York","458":"America/Los_Angeles",
+  "469":"America/Chicago","470":"America/New_York","475":"America/New_York",
+  "478":"America/New_York","479":"America/Chicago","480":"America/Phoenix",
+  "484":"America/New_York","501":"America/Chicago","502":"America/Kentucky/Louisville",
+  "503":"America/Los_Angeles","504":"America/Chicago","505":"America/Denver",
+  "507":"America/Chicago","508":"America/New_York","509":"America/Los_Angeles",
+  "510":"America/Los_Angeles","512":"America/Chicago","513":"America/New_York",
+  "515":"America/Chicago","516":"America/New_York","517":"America/Detroit",
+  "518":"America/New_York","520":"America/Phoenix","530":"America/Los_Angeles",
+  "531":"America/Chicago","534":"America/Chicago","539":"America/Chicago",
+  "540":"America/New_York","541":"America/Los_Angeles","551":"America/New_York",
+  "559":"America/Los_Angeles","561":"America/New_York","562":"America/Los_Angeles",
+  "563":"America/Chicago","567":"America/New_York","570":"America/New_York",
+  "571":"America/New_York","573":"America/Chicago","574":"America/Indiana/Indianapolis",
+  "575":"America/Denver","580":"America/Chicago","585":"America/New_York",
+  "586":"America/Detroit","601":"America/Chicago","602":"America/Phoenix",
+  "603":"America/New_York","605":"America/Chicago","606":"America/New_York",
+  "607":"America/New_York","608":"America/Chicago","609":"America/New_York",
+  "610":"America/New_York","612":"America/Chicago","614":"America/New_York",
+  "615":"America/Chicago","616":"America/Detroit","617":"America/New_York",
+  "618":"America/Chicago","619":"America/Los_Angeles","620":"America/Chicago",
+  "623":"America/Phoenix","626":"America/Los_Angeles","628":"America/Los_Angeles",
+  "629":"America/Chicago","630":"America/Chicago","631":"America/New_York",
+  "636":"America/Chicago","641":"America/Chicago","646":"America/New_York",
+  "650":"America/Los_Angeles","651":"America/Chicago","657":"America/Los_Angeles",
+  "660":"America/Chicago","661":"America/Los_Angeles","662":"America/Chicago",
+  "667":"America/New_York","669":"America/Los_Angeles","671":"Pacific/Guam",
+  "678":"America/New_York","681":"America/New_York","682":"America/Chicago",
+  "701":"America/Chicago","702":"America/Los_Angeles","703":"America/New_York",
+  "704":"America/New_York","706":"America/New_York","707":"America/Los_Angeles",
+  "708":"America/Chicago","712":"America/Chicago","713":"America/Chicago",
+  "714":"America/Los_Angeles","715":"America/Chicago","716":"America/New_York",
+  "717":"America/New_York","718":"America/New_York","719":"America/Denver",
+  "720":"America/Denver","724":"America/New_York","725":"America/Los_Angeles",
+  "727":"America/New_York","731":"America/Chicago","732":"America/New_York",
+  "734":"America/Detroit","737":"America/Chicago","740":"America/New_York",
+  "743":"America/New_York","747":"America/Los_Angeles","754":"America/New_York",
+  "757":"America/New_York","760":"America/Los_Angeles","762":"America/New_York",
+  "763":"America/Chicago","765":"America/Indiana/Indianapolis","769":"America/Chicago",
+  "770":"America/New_York","772":"America/New_York","773":"America/Chicago",
+  "774":"America/New_York","775":"America/Los_Angeles","779":"America/Chicago",
+  "781":"America/New_York","785":"America/Chicago","786":"America/New_York",
+  "801":"America/Denver","802":"America/New_York","803":"America/New_York",
+  "804":"America/New_York","805":"America/Los_Angeles","806":"America/Chicago",
+  "808":"Pacific/Honolulu","810":"America/Detroit","812":"America/Indiana/Indianapolis",
+  "813":"America/New_York","814":"America/New_York","815":"America/Chicago",
+  "816":"America/Chicago","817":"America/Chicago","818":"America/Los_Angeles",
+  "820":"America/Los_Angeles","828":"America/New_York","830":"America/Chicago",
+  "831":"America/Los_Angeles","832":"America/Chicago","843":"America/New_York",
+  "845":"America/New_York","847":"America/Chicago","848":"America/New_York",
+  "850":"America/Chicago","856":"America/New_York","857":"America/New_York",
+  "858":"America/Los_Angeles","859":"America/Kentucky/Louisville","860":"America/New_York",
+  "862":"America/New_York","863":"America/New_York","864":"America/New_York",
+  "865":"America/New_York","870":"America/Chicago","872":"America/Chicago",
+  "878":"America/New_York","901":"America/Chicago","903":"America/Chicago",
+  "904":"America/New_York","906":"America/Detroit","907":"America/Anchorage",
+  "908":"America/New_York","909":"America/Los_Angeles","910":"America/New_York",
+  "912":"America/New_York","913":"America/Chicago","914":"America/New_York",
+  "915":"America/Denver","916":"America/Los_Angeles","917":"America/New_York",
+  "918":"America/Chicago","919":"America/New_York","920":"America/Chicago",
+  "925":"America/Los_Angeles","928":"America/Phoenix","929":"America/New_York",
+  "931":"America/Chicago","936":"America/Chicago","937":"America/New_York",
+  "938":"America/Chicago","940":"America/Chicago","941":"America/New_York",
+  "947":"America/Detroit","949":"America/Los_Angeles","951":"America/Los_Angeles",
+  "952":"America/Chicago","954":"America/New_York","956":"America/Chicago",
+  "959":"America/New_York","970":"America/Denver","971":"America/Los_Angeles",
+  "972":"America/Chicago","973":"America/New_York","978":"America/New_York",
+  "979":"America/Chicago","980":"America/New_York","984":"America/New_York",
+  "985":"America/Chicago","989":"America/Detroit",
+};
+
+// HIGH-RISK states for cold outreach — stricter state DNC laws
+const HIGH_RISK_STATES = ["FL","TX","OK","IN","WY"];
+
+function getAreaCode(phone: string | null): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11 && digits[0] === "1") return digits.slice(1, 4);
+  if (digits.length === 10) return digits.slice(0, 3);
+  return null;
+}
+
+function isWithinContactWindow(phone: string | null): { allowed: boolean; reason: string | null } {
+  const ac = getAreaCode(phone);
+  const tz = ac ? (AREA_CODE_TZ[ac] ?? "America/New_York") : "America/New_York";
+  try {
+    const now = new Date();
+    const localHour = parseInt(new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: false }).format(now));
+    if (localHour < 8)  return { allowed: false, reason: `It's ${localHour < 10 ? "0"+localHour : localHour}:00 local time — TCPA requires 8am–9pm` };
+    if (localHour >= 21) return { allowed: false, reason: `It's after 9pm local time — TCPA requires 8am–9pm` };
+  } catch { /* fallback: allow */ }
+  return { allowed: true, reason: null };
+}
+
+function getOutreachMode(phone: string | null, phoneType: string | null, dnc: boolean): OutreachMode {
+  if (!phone) return "no_number";
+  if (dnc)    return "dnc_blocked";
+  const t = phoneType ?? "unknown";
+  if (t === "landline") return "call_only";
+  // mobile, voip, unknown → treat as mobile (TCPA applies)
+  return "sms_and_call";
+}
+
+function prioritizeLeads(leads: QueueLead[]): QueueLead[] {
+  const tierRank: Record<Tier, number> = { HOT: 0, WARM: 1, COLD: 2 };
+  const modeRank: Record<OutreachMode, number> = { sms_and_call: 0, call_only: 1, no_number: 2, dnc_blocked: 3 };
+  return [...leads].sort((a, b) => {
+    if (tierRank[a.tier] !== tierRank[b.tier]) return tierRank[a.tier] - tierRank[b.tier];
+    if (modeRank[a.outreachMode] !== modeRank[b.outreachMode]) return modeRank[a.outreachMode] - modeRank[b.outreachMode];
+    return b.score - a.score;
+  });
 }
 
 type ScoreRow = {
@@ -158,7 +310,8 @@ function mapScoreToLead(s: ScoreRow): QueueLead {
     id: s.id, listingId: s.listing_id, address: fullAddr, tier,
     urgencyState: urgencyFrom(tier), score: s.score, chips,
     bestPhone:         trusted ? (listing?.best_phone ?? null) : null,
-    bestPhoneType:     null, bestPhoneDnc: false,
+    bestPhoneType:     trusted ? (listing?.phone_type ?? null) : null,
+    bestPhoneDnc:      trusted ? (listing?.is_dnc ?? false) : false,
     bestEmail:         trusted ? (listing?.best_email ?? null) : null,
     contactConfidence: trusted ? (listing!.contact_confidence as "high" | "medium") : null,
     enrichedAt:        listing?.enriched_at ?? null,
@@ -172,6 +325,12 @@ function mapScoreToLead(s: ScoreRow): QueueLead {
     ownerType: "Absentee", mailingAddress: null, holdPeriod: null,
     source: listing?.source ?? "ATTOM",
     fubThread: false, fubThreadLabel: "No thread", fubLastActivity: null, fubPipelineStage: null,
+    outreachMode: getOutreachMode(
+      trusted ? (listing?.best_phone ?? null) : null,
+      trusted ? (listing?.phone_type ?? null) : null,
+      trusted ? (listing?.is_dnc ?? false) : false,
+    ),
+    stateCode: listing?.state ?? null,
   };
 }
 
@@ -426,7 +585,7 @@ export default function OutreachScreen() {
         .order("score", { ascending: false })
         .limit(20);
       if (error) { console.error("[OutreachScreen] fetch:", error); setLoading(false); return; }
-      const mapped = (scores ?? []).map(s => mapScoreToLead(s as ScoreRow));
+      const mapped = prioritizeLeads((scores ?? []).map(s => mapScoreToLead(s as ScoreRow)));
       setLeads(mapped);
       if (mapped.length > 0) setDraft(mapped[0].aiDraft);
       setLoading(false);
@@ -495,8 +654,13 @@ export default function OutreachScreen() {
   if (loading) return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, color: C.tm, fontSize: 13 }}>Loading outreach queue…</div>;
   if (!lead)   return <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, color: C.tm, fontSize: 13 }}>Queue is clear. Ingest runs daily at 6:00 AM.</div>;
 
-  const hasNumber = !!lead.bestPhone;
-  const isHot     = lead.tier === "HOT";
+  const hasNumber  = !!lead.bestPhone;
+  const isHot      = lead.tier === "HOT";
+  const isDnc      = lead.outreachMode === "dnc_blocked";
+  const isLandline = lead.outreachMode === "call_only";
+  const isHighRisk = lead.stateCode ? HIGH_RISK_STATES.includes(lead.stateCode) : false;
+  const tzWindow   = isWithinContactWindow(lead.bestPhone);
+  const smsBlocked = isDnc || isLandline || !tzWindow.allowed;
 
   const bdLabel  = lead.contactConfidence === "high" ? "BatchData · Verified" : lead.contactConfidence === "medium" ? "BatchData · Likely match" : "BatchData · No match";
   const bdBg     = lead.contactConfidence === "high" ? "rgba(16,185,129,0.12)" : lead.contactConfidence === "medium" ? "rgba(245,158,11,0.10)" : "rgba(239,68,68,0.08)";
@@ -597,6 +761,31 @@ export default function OutreachScreen() {
             </div>
           </div>
 
+          {/* Legal warning banner */}
+          {(isDnc || isLandline || !tzWindow.allowed || isHighRisk) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+              {isDnc && (
+                <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", borderRadius: 6, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", fontSize: 11, color: "#f87171" }}>
+                  <span style={{ fontWeight: 700 }}>⛔ DNC — Do Not Contact.</span> This number is on the Do Not Call registry. SMS and calls are blocked.
+                </div>
+              )}
+              {!isDnc && isLandline && (
+                <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", borderRadius: 6, background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.18)", fontSize: 11, color: "#fbbf24" }}>
+                  <span style={{ fontWeight: 700 }}>📞 Landline only.</span> TCPA prohibits texting landlines. Call only.
+                </div>
+              )}
+              {!tzWindow.allowed && (
+                <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", borderRadius: 6, background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.18)", fontSize: 11, color: "#fbbf24" }}>
+                  <span style={{ fontWeight: 700 }}>⏰ Outside contact window.</span> {tzWindow.reason} — TCPA restricts outreach to 8am–9pm recipient local time.
+                </div>
+              )}
+              {isHighRisk && (
+                <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", borderRadius: 6, background: "rgba(139,92,246,0.07)", border: "1px solid rgba(139,92,246,0.18)", fontSize: 11, color: "#a78bfa" }}>
+                  <span style={{ fontWeight: 700 }}>⚠️ High-risk state ({lead.stateCode}).</span> FL, TX, OK, IN, WY have stricter cold-call laws. Verify compliance before outreach.
+                </div>
+              )}
+            </div>
+          )}
           {/* Textarea */}
           <textarea ref={draftRef} value={regenerating ? "" : draft} onChange={e => setDraft(e.target.value)}
             placeholder={regenerating ? "Regenerating…" : !hasNumber ? "No number — use action buttons below" : !aiOn ? "Write your own message…" : "Edit before sending…"}
@@ -609,13 +798,19 @@ export default function OutreachScreen() {
           {/* Actions */}
           {hasNumber ? (
             <div style={{ display: "flex", gap: 7, flexShrink: 0 }}>
-              <button onClick={handleSendSms} style={{ flex: 1.4, padding: "10px 14px", borderRadius: 9, fontSize: 12, fontWeight: 600, letterSpacing: "-0.1px", cursor: "pointer", background: C.accent, color: "#fff", border: "none", fontFamily: "var(--font-ui)", boxShadow: "0 2px 14px rgba(59,130,246,0.22)", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, transition: "background .15s" }} onMouseEnter={e => (e.currentTarget.style.background = "#2563eb")} onMouseLeave={e => (e.currentTarget.style.background = C.accent)}>
-                ↑ Send SMS via FUB
-                <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.7 }}>Logs touch · advances sequence</span>
+              <button
+                onClick={smsBlocked ? undefined : handleSendSms}
+                disabled={smsBlocked}
+                style={{ flex: 1.4, padding: "10px 14px", borderRadius: 9, fontSize: 12, fontWeight: 600, letterSpacing: "-0.1px", cursor: smsBlocked ? "not-allowed" : "pointer", background: smsBlocked ? "rgba(255,255,255,0.05)" : C.accent, color: smsBlocked ? C.tm : "#fff", border: smsBlocked ? `1px solid ${C.border}` : "none", fontFamily: "var(--font-ui)", boxShadow: smsBlocked ? "none" : "0 2px 14px rgba(59,130,246,0.22)", display: "flex", flexDirection: "column", alignItems: "center", gap: 1, transition: "background .15s", opacity: smsBlocked ? 0.5 : 1 }}
+                onMouseEnter={e => { if (!smsBlocked) e.currentTarget.style.background = "#2563eb"; }}
+                onMouseLeave={e => { if (!smsBlocked) e.currentTarget.style.background = C.accent; }}
+              >
+                {isDnc ? "⛔ SMS blocked — DNC" : isLandline ? "📞 Call only — landline" : !tzWindow.allowed ? "⏰ Outside contact window" : "↑ Send SMS via FUB"}
+                <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.7 }}>{smsBlocked ? "Cannot send SMS" : "Logs touch · advances sequence"}</span>
               </button>
-              <button onClick={handleCalled}        style={secondaryBtn("rgba(16,185,129,0.1)",  "#34d399", "rgba(16,185,129,0.22)")}>✓ Called        <span style={subLabel}>Connected</span></button>
-              <button onClick={handleNoAnswer}      style={secondaryBtn("rgba(245,158,11,0.07)", "#fbbf24", "rgba(245,158,11,0.18)")}>○ No answer     <span style={subLabel}>Log attempt</span></button>
-              <button onClick={handleNotInterested} style={secondaryBtn("rgba(239,68,68,0.07)",  "#f87171", "rgba(239,68,68,0.16)")}>✕ Not interested<span style={subLabel}>Remove</span></button>
+              <button onClick={isDnc ? undefined : handleCalled} disabled={isDnc} style={{ ...secondaryBtn("rgba(16,185,129,0.1)", "#34d399", "rgba(16,185,129,0.22)"), opacity: isDnc ? 0.35 : 1, cursor: isDnc ? "not-allowed" : "pointer" }}>✓ Called<span style={subLabel}>{isDnc ? "Blocked" : "Connected"}</span></button>
+              <button onClick={isDnc ? undefined : handleNoAnswer} disabled={isDnc} style={{ ...secondaryBtn("rgba(245,158,11,0.07)", "#fbbf24", "rgba(245,158,11,0.18)"), opacity: isDnc ? 0.35 : 1, cursor: isDnc ? "not-allowed" : "pointer" }}>○ No answer<span style={subLabel}>{isDnc ? "Blocked" : "Log attempt"}</span></button>
+              <button onClick={handleNotInterested} style={secondaryBtn("rgba(239,68,68,0.07)", "#f87171", "rgba(239,68,68,0.16)")}>✕ Not interested<span style={subLabel}>Remove</span></button>
               <button onClick={handleSkip} style={{ ...secondaryBtn("transparent", C.tm, "rgba(255,255,255,0.07)"), flex: 0.7 }}>Skip<span style={subLabel}>Tomorrow</span></button>
             </div>
           ) : (
