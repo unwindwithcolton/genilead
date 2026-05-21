@@ -519,7 +519,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
 
-      {/* ── Fixed map background — fills entire content area behind everything ── */}
+      {/* ── Fixed map — locked behind everything, content scrolls over it ── */}
       <div style={{
         position: "fixed",
         top: 0,
@@ -529,96 +529,64 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
         zIndex: 0,
         pointerEvents: "none",
       }}>
-        {/* Map SVG */}
-        <svg
-          viewBox="0 0 900 580"
-          preserveAspectRatio="xMidYMid slice"
-          style={{ width: "100%", height: "100%", opacity: 0.28 }}
-        >
+        <svg viewBox="0 0 900 580" preserveAspectRatio="xMidYMid slice"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
           <defs>
-            <radialGradient id="dbGHot">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.36" />
-              <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="dbGWarm">
-              <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.30" />
-              <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="dbGWarm2">
-              <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="dbGCool">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.20" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-            </radialGradient>
+            <radialGradient id="fmHot"><stop offset="0%" stopColor="#ef4444" stopOpacity="0.5"/><stop offset="100%" stopColor="#ef4444" stopOpacity="0"/></radialGradient>
+            <radialGradient id="fmWarm"><stop offset="0%" stopColor="#f59e0b" stopOpacity="0.4"/><stop offset="100%" stopColor="#f59e0b" stopOpacity="0"/></radialGradient>
+            <radialGradient id="fmWarm2"><stop offset="0%" stopColor="#f59e0b" stopOpacity="0.28"/><stop offset="100%" stopColor="#f59e0b" stopOpacity="0"/></radialGradient>
+            <radialGradient id="fmCool"><stop offset="0%" stopColor="#3b82f6" stopOpacity="0.28"/><stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/></radialGradient>
           </defs>
-
-          <rect width="900" height="580" fill="#0b0d11" />
-
-          {/* Road grid — arterials */}
-          <g stroke="rgba(255,255,255,0.04)" strokeWidth="1.5" fill="none">
-            {[96,192,288,384,480].map(y => <line key={y} x1="0" y1={y} x2="900" y2={y} />)}
-            {[112,224,336,448,560,672,784].map(x => <line key={x} x1={x} y1="0" x2={x} y2="580" />)}
+          <rect width="900" height="580" fill="#0d0f15"/>
+          <g stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" fill="none">
+            {[96,192,288,384,480].map(y => <line key={y} x1="0" y1={y} x2="900" y2={y}/>)}
+            {[112,224,336,448,560,672,784].map(x => <line key={x} x1={x} y1="0" x2={x} y2="580"/>)}
           </g>
-          {/* Minor streets */}
-          <g stroke="rgba(255,255,255,0.018)" strokeWidth="0.75" fill="none">
-            {[48,144,240,336,432,528].map(y => <line key={y} x1="0" y1={y} x2="900" y2={y} />)}
-            {[56,168,280,392,504,616,728,840].map(x => <line key={x} x1={x} y1="0" x2={x} y2="580" />)}
+          <g stroke="rgba(255,255,255,0.025)" strokeWidth="0.75" fill="none">
+            {[48,144,240,336,432,528].map(y => <line key={y} x1="0" y1={y} x2="900" y2={y}/>)}
+            {[56,168,280,392,504,616,728,840].map(x => <line key={x} x1={x} y1="0" x2={x} y2="580"/>)}
           </g>
-          {/* Major arterials */}
-          <g stroke="rgba(255,255,255,0.05)" strokeWidth="2" fill="none">
-            <line x1="0" y1="290" x2="900" y2="290" />
-            <line x1="448" y1="0" x2="448" y2="580" />
+          <g stroke="rgba(255,255,255,0.065)" strokeWidth="2" fill="none">
+            <line x1="0" y1="290" x2="900" y2="290"/>
+            <line x1="448" y1="0" x2="448" y2="580"/>
           </g>
-
-          {/* Heatmap blobs */}
-          <ellipse cx="200" cy="307" rx="115" ry="95" fill="url(#dbGHot)" />
-          <ellipse cx="200" cy="307" rx="52"  ry="43" fill="rgba(239,68,68,0.10)" />
-          <ellipse cx="534" cy="130" rx="95"  ry="78" fill="url(#dbGWarm)" />
-          <ellipse cx="331" cy="453" rx="80"  ry="66" fill="url(#dbGWarm2)" />
-          <ellipse cx="651" cy="300" rx="82"  ry="68" fill="url(#dbGCool)" />
-          <ellipse cx="130" cy="461" rx="65"  ry="52" fill="url(#dbGWarm2)" opacity="0.7" />
-
-          {/* ZIP boundaries */}
-          <polygon points="148,234 252,234 270,258 270,360 248,380 148,380 130,358 130,258"
-            fill="rgba(239,68,68,0.04)" stroke="rgba(239,68,68,0.35)" strokeWidth="1.5" strokeDasharray="5 4" />
-          <polygon points="480,68 588,68 606,90 606,170 584,192 480,192 462,170 462,90"
-            fill="rgba(245,158,11,0.03)" stroke="rgba(245,158,11,0.28)" strokeWidth="1.5" strokeDasharray="5 4" />
-          <polygon points="280,388 384,388 400,408 400,500 380,518 280,518 262,498 262,410"
-            fill="rgba(245,158,11,0.03)" stroke="rgba(245,158,11,0.24)" strokeWidth="1.5" strokeDasharray="5 4" />
-          <polygon points="600,240 704,240 720,262 720,342 700,360 600,360 582,340 582,262"
-            fill="rgba(59,130,246,0.03)" stroke="rgba(59,130,246,0.20)" strokeWidth="1.5" strokeDasharray="5 4" />
-          <polygon points="78,408 182,408 198,428 198,498 178,514 78,514 62,496 62,428"
-            fill="rgba(245,158,11,0.03)" stroke="rgba(245,158,11,0.20)" strokeWidth="1.5" strokeDasharray="5 4" />
-
-          {/* Neighborhood labels */}
-          <g fontFamily="Inter,-apple-system,sans-serif" fontSize="9" fontWeight="700"
-            fill="rgba(255,255,255,0.12)" textAnchor="middle" letterSpacing="0.06em">
-            <text x="200" y="262">OAK PARK</text>
-            <text x="534" y="98">EVANSTON</text>
-            <text x="331" y="416">CICERO</text>
-            <text x="651" y="268">LINCOLN PARK</text>
-            <text x="130" y="435">BERWYN</text>
-            <text x="448" y="314" fill="rgba(255,255,255,0.05)">CHICAGO LOOP</text>
-          </g>
+          <ellipse cx="450" cy="290" rx="180" ry="140" fill="url(#fmHot)"/>
+          <ellipse cx="450" cy="290" rx="80"  ry="60"  fill="rgba(239,68,68,0.18)"/>
+          <ellipse cx="650" cy="180" rx="120" ry="90"  fill="url(#fmWarm)"/>
+          <ellipse cx="250" cy="420" rx="100" ry="78"  fill="url(#fmWarm2)"/>
+          <ellipse cx="700" cy="380" rx="90"  ry="70"  fill="url(#fmCool)"/>
+          <polygon points="330,190 570,190 595,220 595,360 565,385 330,385 305,358 305,220"
+            fill="rgba(239,68,68,0.05)" stroke="rgba(239,68,68,0.4)" strokeWidth="1.5" strokeDasharray="6 4"/>
+          <text x="450" y="175" fontFamily="Inter,-apple-system,sans-serif" fontSize="10" fontWeight="700"
+            fill="rgba(255,255,255,0.15)" textAnchor="middle" letterSpacing="0.08em">KANKAKEE COUNTY</text>
         </svg>
-
-        {/* Vignette — darkens edges so content reads cleanly */}
+        {/* Heavy top fade — content at top reads cleanly */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "55%",
+          background: "linear-gradient(180deg, rgba(11,13,17,0.97) 0%, rgba(11,13,17,0.7) 60%, transparent 100%)" }} />
+        {/* ZIP bubble — fixed in lower half of viewport */}
         <div style={{
-          position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse at 50% 40%, transparent 20%, rgba(11,13,17,0.55) 70%, rgba(11,13,17,0.92) 100%)",
-        }} />
-        {/* Top fade — blends into topbar */}
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: 120,
-          background: "linear-gradient(180deg, rgba(11,13,17,0.95) 0%, transparent 100%)",
-        }} />
-        {/* Bottom fade */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, height: 160,
-          background: "linear-gradient(0deg, rgba(11,13,17,0.98) 0%, transparent 100%)",
-        }} />
+          position: "absolute", bottom: "18%", left: "50%",
+          transform: "translateX(-50%)", zIndex: 1,
+          display: "flex", flexDirection: "column", alignItems: "center",
+        }}>
+          <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%",
+            background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)",
+            animation: "mapPulse 3s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", width: 110, height: 110, borderRadius: "50%",
+            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+            animation: "mapPulse 3s ease-in-out infinite 0.8s" }} />
+          <div style={{
+            background: "rgba(20,22,30,0.92)", backdropFilter: "blur(8px)",
+            border: "1.5px solid rgba(239,68,68,0.45)", borderRadius: 12,
+            padding: "12px 20px", textAlign: "center",
+            boxShadow: "0 0 0 4px rgba(239,68,68,0.08), 0 12px 32px rgba(0,0,0,0.6)",
+            position: "relative", zIndex: 1,
+          }}>
+            <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.5px", color: "#ef4444", marginBottom: 4 }}>60950</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#f87171" }}>{metrics.hot} HOT · {unworked.length} WARM</div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 4, letterSpacing: "0.05em", textTransform: "uppercase" }}>Kankakee County, IL</div>
+          </div>
+        </div>
       </div>
 
       {/* ── Scrollable content ─────────────────────────────────────────────── */}
@@ -754,97 +722,8 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                 />
               )}
             </div>
-          {/* ── Map section — inline SVG, fades in as you scroll ── */}
-          <div style={{ position: "relative", height: 340, borderRadius: "var(--r-lg)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
-
-            {/* ── Actual map SVG rendered inline ── */}
-            <svg viewBox="0 0 900 580" preserveAspectRatio="xMidYMid slice"
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-              <defs>
-                <radialGradient id="mHot"><stop offset="0%" stopColor="#ef4444" stopOpacity="0.5"/><stop offset="100%" stopColor="#ef4444" stopOpacity="0"/></radialGradient>
-                <radialGradient id="mWarm"><stop offset="0%" stopColor="#f59e0b" stopOpacity="0.4"/><stop offset="100%" stopColor="#f59e0b" stopOpacity="0"/></radialGradient>
-                <radialGradient id="mWarm2"><stop offset="0%" stopColor="#f59e0b" stopOpacity="0.28"/><stop offset="100%" stopColor="#f59e0b" stopOpacity="0"/></radialGradient>
-                <radialGradient id="mCool"><stop offset="0%" stopColor="#3b82f6" stopOpacity="0.28"/><stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/></radialGradient>
-              </defs>
-              <rect width="900" height="580" fill="#0d0f15"/>
-              {/* Road grid */}
-              <g stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" fill="none">
-                {[96,192,288,384,480].map(y => <line key={y} x1="0" y1={y} x2="900" y2={y}/>)}
-                {[112,224,336,448,560,672,784].map(x => <line key={x} x1={x} y1="0" x2={x} y2="580"/>)}
-              </g>
-              <g stroke="rgba(255,255,255,0.025)" strokeWidth="0.75" fill="none">
-                {[48,144,240,336,432,528].map(y => <line key={y} x1="0" y1={y} x2="900" y2={y}/>)}
-                {[56,168,280,392,504,616,728,840].map(x => <line key={x} x1={x} y1="0" x2={x} y2="580"/>)}
-              </g>
-              <g stroke="rgba(255,255,255,0.065)" strokeWidth="2" fill="none">
-                <line x1="0" y1="290" x2="900" y2="290"/>
-                <line x1="448" y1="0" x2="448" y2="580"/>
-              </g>
-              {/* Heatmap blobs */}
-              <ellipse cx="450" cy="290" rx="180" ry="140" fill="url(#mHot)"/>
-              <ellipse cx="450" cy="290" rx="80"  ry="60"  fill="rgba(239,68,68,0.18)"/>
-              <ellipse cx="650" cy="180" rx="120" ry="90"  fill="url(#mWarm)"/>
-              <ellipse cx="250" cy="420" rx="100" ry="78"  fill="url(#mWarm2)"/>
-              <ellipse cx="700" cy="380" rx="90"  ry="70"  fill="url(#mCool)"/>
-              {/* ZIP boundary */}
-              <polygon points="330,190 570,190 595,220 595,360 565,385 330,385 305,358 305,220"
-                fill="rgba(239,68,68,0.06)" stroke="rgba(239,68,68,0.5)" strokeWidth="1.5" strokeDasharray="6 4"/>
-              {/* Neighborhood label */}
-              <text x="450" y="175" fontFamily="Inter,-apple-system,sans-serif" fontSize="10" fontWeight="700"
-                fill="rgba(255,255,255,0.18)" textAnchor="middle" letterSpacing="0.08em">KANKAKEE COUNTY</text>
-            </svg>
-
-            {/* Top fade — blends map into page */}
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 80,
-              background: "linear-gradient(180deg, rgba(11,13,17,0.95) 0%, transparent 100%)", zIndex: 2 }} />
-            {/* Bottom fade */}
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60,
-              background: "linear-gradient(0deg, rgba(11,13,17,0.9) 0%, transparent 100%)", zIndex: 2 }} />
-
-            {/* ZIP bubble — centered on the heatmap */}
-            <div style={{
-              position: "absolute", top: "50%", left: "50%",
-              transform: "translate(-50%, -50%)", zIndex: 3,
-              display: "flex", flexDirection: "column", alignItems: "center",
-            }}>
-              {/* Pulse rings */}
-              <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%",
-                background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)",
-                animation: "mapPulse 3s ease-in-out infinite" }} />
-              <div style={{ position: "absolute", width: 110, height: 110, borderRadius: "50%",
-                background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
-                animation: "mapPulse 3s ease-in-out infinite 0.8s" }} />
-              {/* Bubble card */}
-              <div style={{
-                background: "rgba(20,22,30,0.92)", backdropFilter: "blur(8px)",
-                border: "1.5px solid rgba(239,68,68,0.45)",
-                borderRadius: 12, padding: "12px 20px", textAlign: "center",
-                boxShadow: "0 0 0 4px rgba(239,68,68,0.08), 0 12px 32px rgba(0,0,0,0.6)",
-                position: "relative", zIndex: 1,
-              }}>
-                <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.5px", color: "#ef4444", marginBottom: 4 }}>60950</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#f87171" }}>
-                  {metrics.hot} HOT · {unworked.length} WARM
-                </div>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 4, letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                  Kankakee County, IL
-                </div>
-              </div>
-            </div>
-
-            {/* "Explore full map" link */}
-            <button
-              onClick={() => onNavigate("explorer")}
-              style={{
-                position: "absolute", bottom: 14, right: 16, zIndex: 3,
-                fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 5,
-                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-                color: "var(--text-muted)", cursor: "pointer", fontFamily: "var(--font-ui)",
-              }}
-            >
-              Open Market Explorer →
-            </button>
-          </div>
+          {/* ── Spacer — gives room to scroll down and reveal the map ── */}
+          <div style={{ height: 280 }} />
 
           </>
         )}
