@@ -47,10 +47,10 @@ const ICONS = {
 const NAV_ITEMS: { tab: Tab; label: string; iconKey: keyof typeof ICONS }[] = [
   { tab: "dashboard",     label: "Dashboard",       iconKey: "home"    },
   { tab: "opportunities", label: "Opportunities",   iconKey: "target"  },
+  { tab: "outreach",      label: "Outreach",        iconKey: "send"    },
   { tab: "inbox",         label: "Lead inbox",      iconKey: "inbox"   },
   { tab: "pipeline",      label: "Pipeline",        iconKey: "kanban"  },
   { tab: "explorer",      label: "Market explorer", iconKey: "map"     },
-  { tab: "outreach",      label: "Outreach",        iconKey: "send"    },
   { tab: "reports",       label: "Reports",         iconKey: "chart"   },
 ];
 
