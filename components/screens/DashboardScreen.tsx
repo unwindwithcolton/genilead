@@ -560,10 +560,10 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
           <text x="450" y="175" fontFamily="Inter,-apple-system,sans-serif" fontSize="10" fontWeight="700"
             fill="rgba(255,255,255,0.15)" textAnchor="middle" letterSpacing="0.08em">KANKAKEE COUNTY</text>
         </svg>
-        {/* Gradient — invisible at top, fully visible map at bottom */}
+        {/* Gradient — solid dark at top, fades to transparent so map shows at bottom */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(180deg, rgba(11,13,17,0) 0%, rgba(11,13,17,0) 50%, rgba(11,13,17,0) 100%)",
+          background: "linear-gradient(180deg, rgba(11,13,17,1) 0%, rgba(11,13,17,1) 30%, rgba(11,13,17,0.6) 60%, rgba(11,13,17,0) 100%)",
         }} />
         {/* ZIP bubble — fixed in lower half of viewport */}
         <div style={{
