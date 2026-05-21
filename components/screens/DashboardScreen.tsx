@@ -658,7 +658,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             </div>
 
             {/* ── Today's Pulse + slide-in drawer ──────────────────────────── */}
-            <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--border)", background: "var(--bg-surface)", position: "relative", zIndex: 3 }}>
 
               {/* Pulse list — compresses when drawer is open */}
               <div style={{ flex: selectedAction ? "0 0 52%" : "1 1 100%", transition: "flex-basis 0.3s cubic-bezier(0.4,0,0.2,1)", minWidth: 0, overflow: "hidden", position: "relative", zIndex: 3 }}>
