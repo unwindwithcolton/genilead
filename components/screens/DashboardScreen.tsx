@@ -754,52 +754,97 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                 />
               )}
             </div>
-          {/* ── Map viewport — bleeds through at bottom ── */}
-            <div style={{ position: "relative", height: 260, borderRadius: "var(--r-lg)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)" }}>
-              {/* Semi-transparent dark overlay so map shows through */}
-              <div style={{ position: "absolute", inset: 0, background: "rgba(11,13,17,0.35)", zIndex: 1 }} />
-              {/* 60950 ZIP bubble */}
+          {/* ── Map section — inline SVG, fades in as you scroll ── */}
+          <div style={{ position: "relative", height: 340, borderRadius: "var(--r-lg)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
+
+            {/* ── Actual map SVG rendered inline ── */}
+            <svg viewBox="0 0 900 580" preserveAspectRatio="xMidYMid slice"
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+              <defs>
+                <radialGradient id="mHot"><stop offset="0%" stopColor="#ef4444" stopOpacity="0.5"/><stop offset="100%" stopColor="#ef4444" stopOpacity="0"/></radialGradient>
+                <radialGradient id="mWarm"><stop offset="0%" stopColor="#f59e0b" stopOpacity="0.4"/><stop offset="100%" stopColor="#f59e0b" stopOpacity="0"/></radialGradient>
+                <radialGradient id="mWarm2"><stop offset="0%" stopColor="#f59e0b" stopOpacity="0.28"/><stop offset="100%" stopColor="#f59e0b" stopOpacity="0"/></radialGradient>
+                <radialGradient id="mCool"><stop offset="0%" stopColor="#3b82f6" stopOpacity="0.28"/><stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/></radialGradient>
+              </defs>
+              <rect width="900" height="580" fill="#0d0f15"/>
+              {/* Road grid */}
+              <g stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" fill="none">
+                {[96,192,288,384,480].map(y => <line key={y} x1="0" y1={y} x2="900" y2={y}/>)}
+                {[112,224,336,448,560,672,784].map(x => <line key={x} x1={x} y1="0" x2={x} y2="580"/>)}
+              </g>
+              <g stroke="rgba(255,255,255,0.025)" strokeWidth="0.75" fill="none">
+                {[48,144,240,336,432,528].map(y => <line key={y} x1="0" y1={y} x2="900" y2={y}/>)}
+                {[56,168,280,392,504,616,728,840].map(x => <line key={x} x1={x} y1="0" x2={x} y2="580"/>)}
+              </g>
+              <g stroke="rgba(255,255,255,0.065)" strokeWidth="2" fill="none">
+                <line x1="0" y1="290" x2="900" y2="290"/>
+                <line x1="448" y1="0" x2="448" y2="580"/>
+              </g>
+              {/* Heatmap blobs */}
+              <ellipse cx="450" cy="290" rx="180" ry="140" fill="url(#mHot)"/>
+              <ellipse cx="450" cy="290" rx="80"  ry="60"  fill="rgba(239,68,68,0.18)"/>
+              <ellipse cx="650" cy="180" rx="120" ry="90"  fill="url(#mWarm)"/>
+              <ellipse cx="250" cy="420" rx="100" ry="78"  fill="url(#mWarm2)"/>
+              <ellipse cx="700" cy="380" rx="90"  ry="70"  fill="url(#mCool)"/>
+              {/* ZIP boundary */}
+              <polygon points="330,190 570,190 595,220 595,360 565,385 330,385 305,358 305,220"
+                fill="rgba(239,68,68,0.06)" stroke="rgba(239,68,68,0.5)" strokeWidth="1.5" strokeDasharray="6 4"/>
+              {/* Neighborhood label */}
+              <text x="450" y="175" fontFamily="Inter,-apple-system,sans-serif" fontSize="10" fontWeight="700"
+                fill="rgba(255,255,255,0.18)" textAnchor="middle" letterSpacing="0.08em">KANKAKEE COUNTY</text>
+            </svg>
+
+            {/* Top fade — blends map into page */}
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 80,
+              background: "linear-gradient(180deg, rgba(11,13,17,0.95) 0%, transparent 100%)", zIndex: 2 }} />
+            {/* Bottom fade */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 60,
+              background: "linear-gradient(0deg, rgba(11,13,17,0.9) 0%, transparent 100%)", zIndex: 2 }} />
+
+            {/* ZIP bubble — centered on the heatmap */}
+            <div style={{
+              position: "absolute", top: "50%", left: "50%",
+              transform: "translate(-50%, -50%)", zIndex: 3,
+              display: "flex", flexDirection: "column", alignItems: "center",
+            }}>
+              {/* Pulse rings */}
+              <div style={{ position: "absolute", width: 160, height: 160, borderRadius: "50%",
+                background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)",
+                animation: "mapPulse 3s ease-in-out infinite" }} />
+              <div style={{ position: "absolute", width: 110, height: 110, borderRadius: "50%",
+                background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+                animation: "mapPulse 3s ease-in-out infinite 0.8s" }} />
+              {/* Bubble card */}
               <div style={{
-                position: "absolute", top: "50%", left: "50%",
-                transform: "translate(-50%, -50%)",
-                zIndex: 2,
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                background: "rgba(20,22,30,0.92)", backdropFilter: "blur(8px)",
+                border: "1.5px solid rgba(239,68,68,0.45)",
+                borderRadius: 12, padding: "12px 20px", textAlign: "center",
+                boxShadow: "0 0 0 4px rgba(239,68,68,0.08), 0 12px 32px rgba(0,0,0,0.6)",
+                position: "relative", zIndex: 1,
               }}>
-                {/* Pulse ring */}
-                <div style={{
-                  position: "absolute",
-                  width: 120, height: 120,
-                  borderRadius: "50%",
-                  background: "rgba(239,68,68,0.08)",
-                  border: "1px solid rgba(239,68,68,0.2)",
-                  animation: "mapPulse 3s ease-in-out infinite",
-                }} />
-                {/* Bubble */}
-                <div style={{
-                  background: "#1a1d26",
-                  border: "1.5px solid rgba(239,68,68,0.5)",
-                  borderRadius: 10,
-                  padding: "10px 16px",
-                  textAlign: "center",
-                  boxShadow: "0 0 0 4px rgba(239,68,68,0.08), 0 8px 24px rgba(0,0,0,0.5)",
-                  position: "relative", zIndex: 1,
-                }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.5px", color: "#ef4444", marginBottom: 3 }}>60950</div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#f87171" }}>
-                    {metrics.hot} HOT · {unworked.length} WARM
-                  </div>
+                <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.5px", color: "#ef4444", marginBottom: 4 }}>60950</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#f87171" }}>
+                  {metrics.hot} HOT · {unworked.length} WARM
+                </div>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 4, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                  Kankakee County, IL
                 </div>
               </div>
-              {/* Bottom label */}
-              <div style={{
-                position: "absolute", bottom: 12, left: 0, right: 0,
-                textAlign: "center", zIndex: 2,
-                fontSize: 9, fontWeight: 700, letterSpacing: "0.08em",
-                textTransform: "uppercase", color: "rgba(255,255,255,0.2)",
-              }}>
-                Kankakee County, IL
-              </div>
             </div>
+
+            {/* "Explore full map" link */}
+            <button
+              onClick={() => onNavigate("explorer")}
+              style={{
+                position: "absolute", bottom: 14, right: 16, zIndex: 3,
+                fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 5,
+                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+                color: "var(--text-muted)", cursor: "pointer", fontFamily: "var(--font-ui)",
+              }}
+            >
+              Open Market Explorer →
+            </button>
+          </div>
 
           </>
         )}
