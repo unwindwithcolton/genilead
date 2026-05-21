@@ -754,9 +754,62 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                 />
               )}
             </div>
+          {/* ── Map viewport — bleeds through at bottom ── */}
+            <div style={{ position: "relative", height: 260, borderRadius: "var(--r-lg)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)" }}>
+              {/* Semi-transparent dark overlay so map shows through */}
+              <div style={{ position: "absolute", inset: 0, background: "rgba(11,13,17,0.35)", zIndex: 1 }} />
+              {/* 60950 ZIP bubble */}
+              <div style={{
+                position: "absolute", top: "50%", left: "50%",
+                transform: "translate(-50%, -50%)",
+                zIndex: 2,
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+              }}>
+                {/* Pulse ring */}
+                <div style={{
+                  position: "absolute",
+                  width: 120, height: 120,
+                  borderRadius: "50%",
+                  background: "rgba(239,68,68,0.08)",
+                  border: "1px solid rgba(239,68,68,0.2)",
+                  animation: "mapPulse 3s ease-in-out infinite",
+                }} />
+                {/* Bubble */}
+                <div style={{
+                  background: "#1a1d26",
+                  border: "1.5px solid rgba(239,68,68,0.5)",
+                  borderRadius: 10,
+                  padding: "10px 16px",
+                  textAlign: "center",
+                  boxShadow: "0 0 0 4px rgba(239,68,68,0.08), 0 8px 24px rgba(0,0,0,0.5)",
+                  position: "relative", zIndex: 1,
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.5px", color: "#ef4444", marginBottom: 3 }}>60950</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#f87171" }}>
+                    {metrics.hot} HOT · {unworked.length} WARM
+                  </div>
+                </div>
+              </div>
+              {/* Bottom label */}
+              <div style={{
+                position: "absolute", bottom: 12, left: 0, right: 0,
+                textAlign: "center", zIndex: 2,
+                fontSize: 9, fontWeight: 700, letterSpacing: "0.08em",
+                textTransform: "uppercase", color: "rgba(255,255,255,0.2)",
+              }}>
+                Kankakee County, IL
+              </div>
+            </div>
+
           </>
         )}
       </div>
+      <style>{`
+        @keyframes mapPulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.15); opacity: 0.6; }
+        }
+      `}</style>
     </div>
   );
 }
