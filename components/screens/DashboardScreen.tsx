@@ -560,9 +560,11 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
           <text x="450" y="175" fontFamily="Inter,-apple-system,sans-serif" fontSize="10" fontWeight="700"
             fill="rgba(255,255,255,0.15)" textAnchor="middle" letterSpacing="0.08em">KANKAKEE COUNTY</text>
         </svg>
-        {/* Heavy top fade — content at top reads cleanly */}
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%",
-          background: "linear-gradient(180deg, rgba(11,13,17,0.97) 0%, rgba(11,13,17,0.5) 70%, transparent 100%)" }} />
+        {/* Full gradient overlay — solid at top, fully gone at bottom */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "linear-gradient(180deg, rgba(11,13,17,1) 0%, rgba(11,13,17,1) 40%, rgba(11,13,17,0.7) 65%, rgba(11,13,17,0) 100%)",
+        }} />
         {/* ZIP bubble — fixed in lower half of viewport */}
         <div style={{
           position: "absolute", bottom: "12%", left: "50%",
@@ -722,8 +724,8 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                 />
               )}
             </div>
-          {/* ── Spacer — extends page so map fills viewport as you scroll ── */}
-          <div style={{ height: "100vh" }} />
+          {/* ── Spacer — scroll room so map fully reveals at bottom ── */}
+          <div style={{ height: 600, flexShrink: 0 }} />
 
           </>
         )}
