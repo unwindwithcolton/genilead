@@ -519,7 +519,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
 
-      {/* ── Fixed map background ── */}
+      {/* ── Fixed map background — fills entire content area behind everything ── */}
       <div style={{
         position: "fixed",
         top: 0,
@@ -528,7 +528,6 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
         bottom: 0,
         zIndex: 0,
         pointerEvents: "none",
-        overflow: "hidden",
       }}>
         {/* Map SVG */}
         <svg
@@ -623,12 +622,38 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
       </div>
 
       {/* ── Scrollable content ─────────────────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px", display: "flex", flexDirection: "column", gap: "16px", position: "relative", zIndex: 1 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px", display: "flex", flexDirection: "column", gap: "16px", position: "relative", zIndex: 1, background: "transparent" }}>
         {loading ? (
           <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Loading...</div>
         ) : (
           <>
-            
+            {/* ── ZIP selector ── */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)" }}>Area</span>
+              <div style={{ display: "flex", gap: 6 }}>
+                {[
+                  { zip: "60950", label: "60950", hot: 2, warm: 7 },
+                ].map(z => (
+                  <div key={z.zip} style={{
+                    display: "flex", alignItems: "center", gap: 7,
+                    padding: "5px 12px", borderRadius: 20,
+                    background: "rgba(59,130,246,0.12)",
+                    border: "1px solid rgba(59,130,246,0.35)",
+                    cursor: "pointer",
+                  }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#c0c8e0" }}>{z.zip}</span>
+                    <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 700 }}>{z.hot} HOT</span>
+                    <span style={{ fontSize: 10, color: "#f59e0b", fontWeight: 700 }}>{z.warm} WARM</span>
+                  </div>
+                ))}
+                <button style={{
+                  padding: "5px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600,
+                  background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
+                  color: "var(--text-muted)", cursor: "pointer",
+                }}>+ Add ZIP</button>
+              </div>
+            </div>
 
             {/* ── KPI row — all 4 cards operational ───────────────────────── */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
