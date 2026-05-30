@@ -7,7 +7,7 @@
 
 "use client";
 import { useState, useEffect } from "react";
-import { ClosingPlasma } from "@componentry/closing-plasma";
+import { ClosingPlasma } from "@/components/ui/closing-plasma";
 import { createClient } from "@/lib/supabase";
 import type { Tab } from "@/components/Sidebar";
 
