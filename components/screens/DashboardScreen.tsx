@@ -539,9 +539,9 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
           sparkle={0.25}
           vignette={1.3}
           opacity={1}
-          darkColorA="#1a0d02"
-          darkColorB="#3d2008"
-          darkColorC="#c47a1e"
+          darkColorA="#0d0d14"
+          darkColorB="#1f2540"
+          darkColorC="#4a6191"
           interactive={true}
           className="w-full h-full"
         />
