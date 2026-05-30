@@ -75,17 +75,42 @@ export default function Sidebar({
         width: "var(--sidebar-width)",
         minWidth: "var(--sidebar-width)",
         height: "100vh",
-        background: "rgba(13,15,22,0.55)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderRight: "1px solid rgba(255,255,255,0.07)",
+        // Glass base — nearly clear so plasma bleeds through
+        background: "rgba(12,14,20,0.38)",
+        backdropFilter: "blur(28px) saturate(1.6) brightness(1.08)",
+        WebkitBackdropFilter: "blur(28px) saturate(1.6) brightness(1.08)",
+        // Right edge — the brightest specular line (light hitting the glass edge)
+        borderRight: "1px solid rgba(255,255,255,0.22)",
         display: "flex",
         flexDirection: "column",
         flexShrink: 0,
         position: "relative",
         zIndex: 2,
+        // Lens effect — brighter at edges, recedes in center (magnification illusion)
+        // Plus top specular highlight and left inner reflection
+        boxShadow: `
+          inset 1px 0 0 rgba(255,255,255,0.06),
+          inset -1px 0 0 rgba(255,255,255,0.18),
+          inset 0 1px 0 rgba(255,255,255,0.15),
+          inset 0 -1px 0 rgba(255,255,255,0.06)
+        `,
       }}
     >
+      {/* Lens gradient layer — mimics glass edge magnification */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 0,
+        background: `
+          radial-gradient(ellipse at 0% 50%, rgba(255,255,255,0.055) 0%, transparent 60%),
+          radial-gradient(ellipse at 100% 50%, rgba(255,255,255,0.07) 0%, transparent 55%),
+          radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 50%),
+          linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 15%, transparent 85%, rgba(255,255,255,0.025) 100%)
+        `,
+      }} />
+      {/* Ensure all sidebar content sits above the lens layer */}
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Logo */}
       <div
         style={{
@@ -305,6 +330,7 @@ export default function Sidebar({
           )}
         </div>
       </div>
+    </div>
     </aside>
   );
 }

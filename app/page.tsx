@@ -122,7 +122,7 @@ export default function App() {
         <div style={{
           position: "absolute",
           inset: 0,
-          background: "rgba(11,13,17,0.72)",
+          background: "rgba(11,13,17,0.50)",
         }} />
       </div>
 
