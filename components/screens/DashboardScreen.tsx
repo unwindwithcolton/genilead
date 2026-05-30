@@ -533,15 +533,15 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
         <ClosingPlasma
           themeMode="dark"
           speed={0.35}
-          turbulence={0.65}
+          turbulence={1.4}
           mouseInfluence={0.5}
           grain={0.9}
           sparkle={0.25}
           vignette={1.3}
-          opacity={0.85}
-          darkColorA="#0b0d11"
-          darkColorB="#1a1208"
-          darkColorC="#3d2a0e"
+          opacity={1}
+          darkColorA="#1a0f05"
+          darkColorB="#3d2008"
+          darkColorC="#7a3f10"
           interactive={true}
           className="w-full h-full"
         />
