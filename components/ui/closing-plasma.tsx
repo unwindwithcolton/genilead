@@ -93,9 +93,9 @@ void main() {
   float ridges = 1.0 - abs(snoise(p * 4.0 + n) * 2.0);
   ridges = pow(ridges, 3.0);
 
-  vec3 colorA = mix(u_lightA, u_darkA, u_isDark);
-  vec3 colorB = mix(u_lightB, u_darkB, u_isDark);
-  vec3 colorC = mix(u_lightC, u_darkC, u_isDark);
+  vec3 colorA = u_darkA;
+  vec3 colorB = u_darkB;
+  vec3 colorC = u_darkC;
 
   vec3 col = mix(colorA, colorB, smoothstep(-0.5, 0.5, n));
   col = mix(col, colorC, smoothstep(0.25, 1.0, n * 0.52 + ridges * 0.48));
