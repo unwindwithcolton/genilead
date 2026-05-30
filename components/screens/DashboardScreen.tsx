@@ -7,7 +7,6 @@
 
 "use client";
 import { useState, useEffect } from "react";
-import { ClosingPlasma } from "@/components/ui/closing-plasma";
 import { createClient } from "@/lib/supabase";
 import type { Tab } from "@/components/Sidebar";
 
@@ -520,33 +519,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
 
-      {/* ── Plasma background — fills entire content area behind everything ── */}
-      <div style={{
-        position: "fixed",
-        top: 0,
-        left: 220,
-        right: 0,
-        bottom: 0,
-        zIndex: 0,
-        pointerEvents: "none",
-      }}>
-        <ClosingPlasma
-          speed={1}
-          turbulence={1}
-          mouseInfluence={1}
-          grain={1}
-          sparkle={1}
-          vignette={1}
-          opacity={1}
-          interactive={true}
-          className="w-full h-full"
-        />
-        <div style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(11,13,17,0.75)",
-        }} />
-      </div>
+      {/* Plasma lives in page.tsx — renders behind sidebar too */}
 
       {/* ── Scrollable content ─────────────────────────────────────────────── */}
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px", display: "flex", flexDirection: "column", gap: "16px", position: "relative", zIndex: 1, background: "transparent" }}>

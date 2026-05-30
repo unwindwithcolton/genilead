@@ -75,11 +75,15 @@ export default function Sidebar({
         width: "var(--sidebar-width)",
         minWidth: "var(--sidebar-width)",
         height: "100vh",
-        background: "var(--bg-surface)",
-        borderRight: "1px solid var(--border)",
+        background: "rgba(13,15,22,0.55)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderRight: "1px solid rgba(255,255,255,0.07)",
         display: "flex",
         flexDirection: "column",
         flexShrink: 0,
+        position: "relative",
+        zIndex: 2,
       }}
     >
       {/* Logo */}
