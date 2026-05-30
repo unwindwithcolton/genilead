@@ -9,7 +9,6 @@ import { createClient } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 
 import LoginScreen from "@/components/LoginScreen";
-import { ClosingPlasma } from "@/components/ui/closing-plasma";
 import Sidebar, { type Tab } from "@/components/Sidebar";
 import DashboardScreen from "@/components/screens/DashboardScreen";
 import OpportunitiesScreen from "@/components/screens/OpportunitiesScreen";
@@ -101,30 +100,7 @@ export default function App() {
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", position: "relative" }}>
 
-      {/* ── Plasma background — fixed, full viewport, behind everything ── */}
-      <div style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 0,
-        pointerEvents: "none",
-      }}>
-        <ClosingPlasma
-          speed={1}
-          turbulence={1}
-          mouseInfluence={1}
-          grain={1}
-          sparkle={1}
-          vignette={1}
-          opacity={1}
-          interactive={true}
-          className="w-full h-full"
-        />
-        <div style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(11,13,17,0.50)",
-        }} />
-      </div>
+      {/* Plasma lives in DashboardScreen only */}
 
       <Sidebar
         activeTab={activeTab}
@@ -139,7 +115,7 @@ export default function App() {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          background: "transparent",
+          background: "var(--bg-base)",
           position: "relative",
           zIndex: 1,
         }}
