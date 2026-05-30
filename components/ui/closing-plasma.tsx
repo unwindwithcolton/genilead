@@ -93,9 +93,9 @@ void main() {
   float ridges = 1.0 - abs(snoise(p * 4.0 + n) * 2.0);
   ridges = pow(ridges, 3.0);
 
-  vec3 colorA = u_darkA;
-  vec3 colorB = u_darkB;
-  vec3 colorC = u_darkC;
+  vec3 colorA = mix(u_lightA, u_darkA, u_isDark);
+  vec3 colorB = mix(u_lightB, u_darkB, u_isDark);
+  vec3 colorC = mix(u_lightC, u_darkC, u_isDark);
 
   vec3 col = mix(colorA, colorB, smoothstep(-0.5, 0.5, n));
   col = mix(col, colorC, smoothstep(0.25, 1.0, n * 0.52 + ridges * 0.48));
@@ -104,8 +104,10 @@ void main() {
   vec3 sparkleColor = mix(vec3(0.56, 0.58, 0.72), vec3(0.8, 0.9, 1.0), u_isDark);
   col += sparkleColor * sparkle;
 
-  float vig = 1.0 - smoothstep(0.4, 1.6, length(p));
-  col *= vig;
+  float vigDark = 1.0 - smoothstep(0.5, mix(1.8, 1.55, u_isDark), length(p));
+  col = mix(col, col * vigDark, u_isDark * u_vignette);
+  float vigLight = 1.0 - smoothstep(0.4, 1.45, length(p));
+  col = mix(mix(vec3(1.0), col, vigLight), col, u_isDark);
 
   float grain = (fract(sin(dot(gl_FragCoord.xy + t * 50.0, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * (0.06 * u_grain);
   col += grain;
@@ -183,7 +185,7 @@ export function ClosingPlasma({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mouseRef = useRef({ x: 0.5, y: 0.5 });
   const targetMouseRef = useRef({ x: 0.5, y: 0.5 });
-  const isDarkRef = useRef(1);
+  const isDarkRef = useRef(0);
 
   const settings = useMemo(
     () => ({
