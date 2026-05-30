@@ -541,6 +541,11 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
           interactive={true}
           className="w-full h-full"
         />
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(11,13,17,0.75)",
+        }} />
       </div>
 
       {/* ── Scrollable content ─────────────────────────────────────────────── */}
