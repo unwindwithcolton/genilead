@@ -531,8 +531,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
         pointerEvents: "none",
       }}>
         <ClosingPlasma
-          themeMode="dark"
-          speed={0.5}
+          speed={1}
           turbulence={1}
           mouseInfluence={1}
           grain={1}
