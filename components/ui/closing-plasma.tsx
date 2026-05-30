@@ -185,7 +185,7 @@ export function ClosingPlasma({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mouseRef = useRef({ x: 0.5, y: 0.5 });
   const targetMouseRef = useRef({ x: 0.5, y: 0.5 });
-  const isDarkRef = useRef(0);
+  const isDarkRef = useRef(themeMode === "dark" ? 1 : 0);
 
   const settings = useMemo(
     () => ({
