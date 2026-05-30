@@ -104,10 +104,8 @@ void main() {
   vec3 sparkleColor = mix(vec3(0.56, 0.58, 0.72), vec3(0.8, 0.9, 1.0), u_isDark);
   col += sparkleColor * sparkle;
 
-  float vigDark = 1.0 - smoothstep(0.5, mix(1.8, 1.55, u_isDark), length(p));
-  col = mix(col, col * vigDark, u_isDark * u_vignette);
-  float vigLight = 1.0 - smoothstep(0.4, 1.45, length(p));
-  col = mix(mix(vec3(1.0), col, vigLight), col, u_isDark);
+  float vig = 1.0 - smoothstep(0.4, 1.6, length(p));
+  col *= vig;
 
   float grain = (fract(sin(dot(gl_FragCoord.xy + t * 50.0, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * (0.06 * u_grain);
   col += grain;
@@ -285,7 +283,9 @@ export function ClosingPlasma({
 
     const compileShader = (type: number, source: string) => {
       const shader = gl.createShader(type);
-      if (!shader) return null;
+      if (!shader) {
+        return null;
+      }
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
@@ -297,7 +297,9 @@ export function ClosingPlasma({
 
     const vertexShader = compileShader(gl.VERTEX_SHADER, VERTEX_SHADER);
     const fragmentShader = compileShader(gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-    if (!vertexShader || !fragmentShader) return;
+    if (!vertexShader || !fragmentShader) {
+      return;
+    }
 
     const program = gl.createProgram();
     if (!program) {
@@ -329,27 +331,43 @@ export function ClosingPlasma({
     gl.enableVertexAttribArray(position);
     gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
-    const uRes           = gl.getUniformLocation(program, "u_res");
-    const uTime          = gl.getUniformLocation(program, "u_time");
-    const uMouse         = gl.getUniformLocation(program, "u_mouse");
-    const uIsDark        = gl.getUniformLocation(program, "u_isDark");
-    const uSpeed         = gl.getUniformLocation(program, "u_speed");
-    const uTurbulence    = gl.getUniformLocation(program, "u_turbulence");
-    const uMouseInfluence= gl.getUniformLocation(program, "u_mouseInfluence");
-    const uGrain         = gl.getUniformLocation(program, "u_grain");
-    const uSparkle       = gl.getUniformLocation(program, "u_sparkle");
-    const uVignette      = gl.getUniformLocation(program, "u_vignette");
-    const uOpacity       = gl.getUniformLocation(program, "u_opacity");
-    const uDarkA         = gl.getUniformLocation(program, "u_darkA");
-    const uDarkB         = gl.getUniformLocation(program, "u_darkB");
-    const uDarkC         = gl.getUniformLocation(program, "u_darkC");
-    const uLightA        = gl.getUniformLocation(program, "u_lightA");
-    const uLightB        = gl.getUniformLocation(program, "u_lightB");
-    const uLightC        = gl.getUniformLocation(program, "u_lightC");
+    const uRes = gl.getUniformLocation(program, "u_res");
+    const uTime = gl.getUniformLocation(program, "u_time");
+    const uMouse = gl.getUniformLocation(program, "u_mouse");
+    const uIsDark = gl.getUniformLocation(program, "u_isDark");
+    const uSpeed = gl.getUniformLocation(program, "u_speed");
+    const uTurbulence = gl.getUniformLocation(program, "u_turbulence");
+    const uMouseInfluence = gl.getUniformLocation(program, "u_mouseInfluence");
+    const uGrain = gl.getUniformLocation(program, "u_grain");
+    const uSparkle = gl.getUniformLocation(program, "u_sparkle");
+    const uVignette = gl.getUniformLocation(program, "u_vignette");
+    const uOpacity = gl.getUniformLocation(program, "u_opacity");
+    const uDarkA = gl.getUniformLocation(program, "u_darkA");
+    const uDarkB = gl.getUniformLocation(program, "u_darkB");
+    const uDarkC = gl.getUniformLocation(program, "u_darkC");
+    const uLightA = gl.getUniformLocation(program, "u_lightA");
+    const uLightB = gl.getUniformLocation(program, "u_lightB");
+    const uLightC = gl.getUniformLocation(program, "u_lightC");
 
-    if (!uRes || !uTime || !uMouse || !uIsDark || !uSpeed || !uTurbulence ||
-        !uMouseInfluence || !uGrain || !uSparkle || !uVignette || !uOpacity ||
-        !uDarkA || !uDarkB || !uDarkC || !uLightA || !uLightB || !uLightC) {
+    if (
+      !uRes ||
+      !uTime ||
+      !uMouse ||
+      !uIsDark ||
+      !uSpeed ||
+      !uTurbulence ||
+      !uMouseInfluence ||
+      !uGrain ||
+      !uSparkle ||
+      !uVignette ||
+      !uOpacity ||
+      !uDarkA ||
+      !uDarkB ||
+      !uDarkC ||
+      !uLightA ||
+      !uLightB ||
+      !uLightC
+    ) {
       gl.deleteBuffer(buffer);
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
@@ -360,7 +378,7 @@ export function ClosingPlasma({
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
       const { width, height } = container.getBoundingClientRect();
-      canvas.width  = Math.max(1, Math.floor(width  * dpr));
+      canvas.width = Math.max(1, Math.floor(width * dpr));
       canvas.height = Math.max(1, Math.floor(height * dpr));
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform2f(uRes, canvas.width, canvas.height);
@@ -370,16 +388,16 @@ export function ClosingPlasma({
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(container);
 
-    const darkA  = hexToRgb01(settings.darkColorA,  DARK_A);
-    const darkB  = hexToRgb01(settings.darkColorB,  DARK_B);
-    const darkC  = hexToRgb01(settings.darkColorC,  DARK_C);
+    const darkA = hexToRgb01(settings.darkColorA, DARK_A);
+    const darkB = hexToRgb01(settings.darkColorB, DARK_B);
+    const darkC = hexToRgb01(settings.darkColorC, DARK_C);
     const lightA = hexToRgb01(settings.lightColorA, LIGHT_A);
     const lightB = hexToRgb01(settings.lightColorB, LIGHT_B);
     const lightC = hexToRgb01(settings.lightColorC, LIGHT_C);
 
-    gl.uniform3f(uDarkA,  darkA[0],  darkA[1],  darkA[2]);
-    gl.uniform3f(uDarkB,  darkB[0],  darkB[1],  darkB[2]);
-    gl.uniform3f(uDarkC,  darkC[0],  darkC[1],  darkC[2]);
+    gl.uniform3f(uDarkA, darkA[0], darkA[1], darkA[2]);
+    gl.uniform3f(uDarkB, darkB[0], darkB[1], darkB[2]);
+    gl.uniform3f(uDarkC, darkC[0], darkC[1], darkC[2]);
     gl.uniform3f(uLightA, lightA[0], lightA[1], lightA[2]);
     gl.uniform3f(uLightB, lightB[0], lightB[1], lightB[2]);
     gl.uniform3f(uLightC, lightC[0], lightC[1], lightC[2]);
@@ -392,16 +410,16 @@ export function ClosingPlasma({
       mouseRef.current.x += (targetMouseRef.current.x - mouseRef.current.x) * 0.05;
       mouseRef.current.y += (targetMouseRef.current.y - mouseRef.current.y) * 0.05;
 
-      gl.uniform1f(uTime,          elapsed);
-      gl.uniform2f(uMouse,         mouseRef.current.x, mouseRef.current.y);
-      gl.uniform1f(uIsDark,        isDarkRef.current);
-      gl.uniform1f(uSpeed,         settings.speed);
-      gl.uniform1f(uTurbulence,    settings.turbulence);
-      gl.uniform1f(uMouseInfluence,settings.mouseInfluence);
-      gl.uniform1f(uGrain,         settings.grain);
-      gl.uniform1f(uSparkle,       settings.sparkle);
-      gl.uniform1f(uVignette,      settings.vignette);
-      gl.uniform1f(uOpacity,       settings.opacity);
+      gl.uniform1f(uTime, elapsed);
+      gl.uniform2f(uMouse, mouseRef.current.x, mouseRef.current.y);
+      gl.uniform1f(uIsDark, isDarkRef.current);
+      gl.uniform1f(uSpeed, settings.speed);
+      gl.uniform1f(uTurbulence, settings.turbulence);
+      gl.uniform1f(uMouseInfluence, settings.mouseInfluence);
+      gl.uniform1f(uGrain, settings.grain);
+      gl.uniform1f(uSparkle, settings.sparkle);
+      gl.uniform1f(uVignette, settings.vignette);
+      gl.uniform1f(uOpacity, settings.opacity);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       rafId = requestAnimationFrame(render);
     };
