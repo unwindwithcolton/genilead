@@ -112,3 +112,7 @@ button {
   cursor: pointer;
   font-family: var(--font-ui);
 }
+
+html, body, #__next, [data-nextjs-scroll-focus-boundary] {
+  background: #0b0d11 !important;
+}
