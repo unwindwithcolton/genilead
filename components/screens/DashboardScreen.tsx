@@ -7,6 +7,7 @@
 
 "use client";
 import { useState, useEffect } from "react";
+import { ClosingPlasma } from "@/components/ui/closing-plasma";
 import { createClient } from "@/lib/supabase";
 import type { Tab } from "@/components/Sidebar";
 
@@ -519,7 +520,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
 
-      {/* ── Fixed map background — fills entire content area behind everything ── */}
+      {/* ── Plasma background — fills entire content area behind everything ── */}
       <div style={{
         position: "fixed",
         top: 0,
@@ -529,96 +530,20 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
         zIndex: 0,
         pointerEvents: "none",
       }}>
-        {/* Map SVG */}
-        <svg
-          viewBox="0 0 900 580"
-          preserveAspectRatio="xMidYMid slice"
-          style={{ width: "100%", height: "100%", opacity: 0.28 }}
-        >
-          <defs>
-            <radialGradient id="dbGHot">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.36" />
-              <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="dbGWarm">
-              <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.30" />
-              <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="dbGWarm2">
-              <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="dbGCool">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.20" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-
-          <rect width="900" height="580" fill="#0b0d11" />
-
-          {/* Road grid — arterials */}
-          <g stroke="rgba(255,255,255,0.04)" strokeWidth="1.5" fill="none">
-            {[96,192,288,384,480].map(y => <line key={y} x1="0" y1={y} x2="900" y2={y} />)}
-            {[112,224,336,448,560,672,784].map(x => <line key={x} x1={x} y1="0" x2={x} y2="580" />)}
-          </g>
-          {/* Minor streets */}
-          <g stroke="rgba(255,255,255,0.018)" strokeWidth="0.75" fill="none">
-            {[48,144,240,336,432,528].map(y => <line key={y} x1="0" y1={y} x2="900" y2={y} />)}
-            {[56,168,280,392,504,616,728,840].map(x => <line key={x} x1={x} y1="0" x2={x} y2="580" />)}
-          </g>
-          {/* Major arterials */}
-          <g stroke="rgba(255,255,255,0.05)" strokeWidth="2" fill="none">
-            <line x1="0" y1="290" x2="900" y2="290" />
-            <line x1="448" y1="0" x2="448" y2="580" />
-          </g>
-
-          {/* Heatmap blobs */}
-          <ellipse cx="200" cy="307" rx="115" ry="95" fill="url(#dbGHot)" />
-          <ellipse cx="200" cy="307" rx="52"  ry="43" fill="rgba(239,68,68,0.10)" />
-          <ellipse cx="534" cy="130" rx="95"  ry="78" fill="url(#dbGWarm)" />
-          <ellipse cx="331" cy="453" rx="80"  ry="66" fill="url(#dbGWarm2)" />
-          <ellipse cx="651" cy="300" rx="82"  ry="68" fill="url(#dbGCool)" />
-          <ellipse cx="130" cy="461" rx="65"  ry="52" fill="url(#dbGWarm2)" opacity="0.7" />
-
-          {/* ZIP boundaries */}
-          <polygon points="148,234 252,234 270,258 270,360 248,380 148,380 130,358 130,258"
-            fill="rgba(239,68,68,0.04)" stroke="rgba(239,68,68,0.35)" strokeWidth="1.5" strokeDasharray="5 4" />
-          <polygon points="480,68 588,68 606,90 606,170 584,192 480,192 462,170 462,90"
-            fill="rgba(245,158,11,0.03)" stroke="rgba(245,158,11,0.28)" strokeWidth="1.5" strokeDasharray="5 4" />
-          <polygon points="280,388 384,388 400,408 400,500 380,518 280,518 262,498 262,410"
-            fill="rgba(245,158,11,0.03)" stroke="rgba(245,158,11,0.24)" strokeWidth="1.5" strokeDasharray="5 4" />
-          <polygon points="600,240 704,240 720,262 720,342 700,360 600,360 582,340 582,262"
-            fill="rgba(59,130,246,0.03)" stroke="rgba(59,130,246,0.20)" strokeWidth="1.5" strokeDasharray="5 4" />
-          <polygon points="78,408 182,408 198,428 198,498 178,514 78,514 62,496 62,428"
-            fill="rgba(245,158,11,0.03)" stroke="rgba(245,158,11,0.20)" strokeWidth="1.5" strokeDasharray="5 4" />
-
-          {/* Neighborhood labels */}
-          <g fontFamily="Inter,-apple-system,sans-serif" fontSize="9" fontWeight="700"
-            fill="rgba(255,255,255,0.12)" textAnchor="middle" letterSpacing="0.06em">
-            <text x="200" y="262">OAK PARK</text>
-            <text x="534" y="98">EVANSTON</text>
-            <text x="331" y="416">CICERO</text>
-            <text x="651" y="268">LINCOLN PARK</text>
-            <text x="130" y="435">BERWYN</text>
-            <text x="448" y="314" fill="rgba(255,255,255,0.05)">CHICAGO LOOP</text>
-          </g>
-        </svg>
-
-        {/* Vignette — darkens edges so content reads cleanly */}
-        <div style={{
-          position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse at 50% 40%, transparent 20%, rgba(11,13,17,0.55) 70%, rgba(11,13,17,0.92) 100%)",
-        }} />
-        {/* Top fade — blends into topbar */}
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: 120,
-          background: "linear-gradient(180deg, rgba(11,13,17,0.95) 0%, transparent 100%)",
-        }} />
-        {/* Bottom fade */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, height: 160,
-          background: "linear-gradient(0deg, rgba(11,13,17,0.98) 0%, transparent 100%)",
-        }} />
+        <ClosingPlasma
+          speed={0.35}
+          turbulence={0.65}
+          mouseInfluence={0.5}
+          grain={0.9}
+          sparkle={0.25}
+          vignette={1.3}
+          opacity={0.45}
+          darkColorA="#0b0d11"
+          darkColorB="#100e0c"
+          darkColorC="#1d1507"
+          interactive={true}
+          className="w-full h-full"
+        />
       </div>
 
       {/* ── Scrollable content ─────────────────────────────────────────────── */}
