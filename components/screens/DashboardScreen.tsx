@@ -612,7 +612,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                 sub="Need a call today"
                 variant="hot"
                 pulse
-                onClick={metrics.hot > 0 ? () => onNavigate("opportunities") : undefined}
+                onClick={metrics.hot > 0 ? () => onNavigate("outreach") : undefined}
               />
               <KpiCard
                 label="Needs Follow-Up"
@@ -620,7 +620,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                 sub="Scored ≥ 40, no outreach"
                 variant="amber"
                 pulse
-                onClick={unworked.length > 0 ? () => onNavigate("opportunities") : undefined}
+                onClick={unworked.length > 0 ? () => onNavigate("outreach") : undefined}
               />
               <KpiCard
                 label="Total Leads"
@@ -653,7 +653,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                         </span>
                       )}
                     </div>
-                    <button onClick={() => onNavigate("opportunities")} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "10.5px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                    <button onClick={() => onNavigate("outreach")} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "10.5px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                       View all →
                     </button>
                   </div>
@@ -831,14 +831,25 @@ function ActionRow({
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Address */}
-          <div style={{
-            fontSize: "13px", fontWeight: 700,
-            color: action.tier === "nurture" ? "#c8ccd8" : "#eceef5",
-            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-            letterSpacing: "0.01em", marginBottom: 4,
-          }}>
-            {action.address}{action.city ? `, ${action.city}` : ""}
+          {/* Address + ZIP */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, minWidth: 0 }}>
+            <div style={{
+              fontSize: "13px", fontWeight: 700,
+              color: action.tier === "nurture" ? "#c8ccd8" : "#eceef5",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              letterSpacing: "0.01em", flex: 1, minWidth: 0,
+            }}>
+              {action.address}{action.city ? `, ${action.city}` : ""}
+            </div>
+            {action.zip && (
+              <span style={{
+                fontSize: "9.5px", fontWeight: 600, padding: "2px 6px",
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 4, color: "var(--text-muted)", letterSpacing: "0.04em", flexShrink: 0,
+              }}>
+                {action.zip}
+              </span>
+            )}
           </div>
           {/* Tag line */}
           <div style={{
@@ -1124,7 +1135,7 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
       </div>
 
       {/* ── Scrollable body ── */}
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
 
         {/* ── Property signals ── */}
         <div style={{ padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
