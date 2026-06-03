@@ -344,17 +344,60 @@ function TierDivider({ label }: { label: string }) {
 }
 
 // Reason chip — small pill tag for HOT row signal signals
+const CHIP_ATTOM_DETAIL: Record<string, string> = {
+  "Tax delinquent":      "Owner has unpaid property taxes — strong motivation signal",
+  "Absentee owner":      "Owner does not live at the property — investor or landlord",
+  "High equity":         "AVM significantly exceeds last sold price — equity position confirmed",
+  "Equity spread":       "Spread between AVM and purchase price indicates sellable equity",
+  "High equity spread":  "Large gap between AVM and last sold — high profit potential",
+  "Long ownership":      "Owner has held 7+ years — higher likelihood of motivation to sell",
+  "Long hold":           "Property held long-term — appreciation likely, motivation possible",
+  "Recent acquisition":  "Acquired recently — monitor for distress or flip signals",
+  "Off-market":          "No active MLS listing — potential exclusive opportunity",
+  "Off-market candidate":"Signals suggest owner may be open to off-market deal",
+  "Price reduction":     "Active listing has had price cut — motivation confirmed",
+  "Equity gain":         "Owner has gained equity since purchase",
+  "Appreciated":         "AVM has risen above purchase price — strong equity signal",
+  "AVM appreciation":    "Automated valuation model shows appreciation since last sale",
+  "No active listing":   "Not currently on MLS — off-market outreach window open",
+  "Owner-occupied":      "Owner lives at property — direct outreach more personal",
+  "Equity position":     "Owner holds meaningful equity based on ATTOM valuation data",
+};
+
 function ReasonChip({ label, hot }: { label: string; hot?: boolean }) {
+  const [hovered, setHovered] = useState(false);
+  const detail = CHIP_ATTOM_DETAIL[label];
+
   return (
-    <span style={{
-      fontSize: "9.5px", fontWeight: 700, padding: "2px 7px", borderRadius: 4,
-      whiteSpace: "nowrap",
-      background: hot ? "rgba(220,38,38,0.12)" : "#161a24",
-      color:      hot ? "#f87171"              : "var(--text-muted)",
-      border:     hot ? "1px solid rgba(220,38,38,0.18)" : "1px solid var(--border)",
-    }}>
-      {label}
-    </span>
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <span
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          fontSize: "9.5px", fontWeight: 700, padding: "2px 7px", borderRadius: 4,
+          whiteSpace: "nowrap", cursor: detail ? "default" : undefined,
+          background: hot ? "rgba(220,38,38,0.12)" : "#161a24",
+          color:      hot ? "#f87171"              : "var(--text-muted)",
+          border:     hot ? "1px solid rgba(220,38,38,0.18)" : "1px solid var(--border)",
+          display: "inline-block",
+        }}
+      >
+        {label}
+      </span>
+      {hovered && detail && (
+        <div style={{
+          position: "absolute", bottom: "calc(100% + 6px)", left: 0, zIndex: 60,
+          background: "#13151b", border: "1px solid rgba(255,255,255,0.10)",
+          borderRadius: 6, padding: "7px 10px", width: 200,
+          boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
+          fontSize: "10.5px", color: "#9da2ba", lineHeight: 1.5,
+          pointerEvents: "none",
+        }}>
+          <div style={{ fontSize: "8.5px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 4 }}>ATTOM signal</div>
+          {detail}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -637,10 +680,10 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             </div>
 
             {/* ── Today's Pulse + slide-in drawer ──────────────────────────── */}
-            <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: selectedAction ? "none" : "1px solid var(--border)" }}>
 
               {/* Pulse list — compresses when drawer is open */}
-              <div style={{ flex: selectedAction ? "0 0 52%" : "1 1 100%", transition: "flex-basis 0.3s cubic-bezier(0.4,0,0.2,1)", minWidth: 0, overflow: "hidden" }}>
+              <div style={{ flex: selectedAction ? "0 0 52%" : "1 1 100%", transition: "flex-basis 0.3s cubic-bezier(0.4,0,0.2,1)", minWidth: 0, overflow: "hidden", outline: "none" }}>
                 <div style={{ background: "var(--bg-surface)" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -733,8 +776,8 @@ function ScoreChip({ action, tierScoreStyle }: {
       <div
         onClick={() => setOpen((v) => !v)}
         style={{
-          fontSize: "11px", fontWeight: 800, padding: "3px 8px",
-          borderRadius: 5, minWidth: 34, textAlign: "center",
+          fontSize: "15px", fontWeight: 800, padding: "5px 10px",
+          borderRadius: 6, minWidth: 42, textAlign: "center",
           cursor: "pointer",
           outline: open ? "1.5px solid rgba(59,130,246,0.5)" : "none",
           ...tierScoreStyle[action.tier],
@@ -831,13 +874,13 @@ function ActionRow({
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Address + ZIP */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, minWidth: 0 }}>
+          {/* Address + ZIP inline */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, minWidth: 0, flexWrap: "nowrap" }}>
             <div style={{
               fontSize: "13px", fontWeight: 700,
               color: action.tier === "nurture" ? "#c8ccd8" : "#eceef5",
               whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-              letterSpacing: "0.01em", flex: 1, minWidth: 0,
+              letterSpacing: "0.01em", minWidth: 0,
             }}>
               {action.address}{action.city ? `, ${action.city}` : ""}
             </div>
@@ -851,20 +894,22 @@ function ActionRow({
               </span>
             )}
           </div>
-          {/* Tag line */}
-          <div style={{
-            fontSize: "11px",
-            color: action.tier === "nurture" ? "var(--text-muted)" : "#9da2ba",
-            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-            lineHeight: 1.4,
-          }}>
-            {action.tier !== "nurture" && (
-              <span style={{ color: tierTagColor[action.tier], fontWeight: 800, fontSize: "9.5px", letterSpacing: "0.04em", marginRight: 6 }}>
-                ● {action.tier.toUpperCase()}
-              </span>
-            )}
-            {action.reason}
-          </div>
+          {/* Tag line — suppressed for HOT rows since chips carry the same info */}
+          {action.tier !== "hot" && (
+            <div style={{
+              fontSize: "11px",
+              color: action.tier === "nurture" ? "var(--text-muted)" : "#9da2ba",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              lineHeight: 1.4,
+            }}>
+              {action.tier !== "nurture" && (
+                <span style={{ color: tierTagColor[action.tier], fontWeight: 800, fontSize: "9.5px", letterSpacing: "0.04em", marginRight: 6 }}>
+                  ● {action.tier.toUpperCase()}
+                </span>
+              )}
+              {action.reason}
+            </div>
+          )}
           {/* Reason chips — HOT rows only */}
           {action.tier === "hot" && action.chips.length > 0 && (
             <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
@@ -1124,17 +1169,17 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
         <button onClick={onClose} style={{ background: "none", border: "none", color: "#3a3f55", cursor: "pointer", fontSize: "16px", lineHeight: 1, padding: 0, fontFamily: "inherit" }}>✕</button>
       </div>
 
-      {/* ── Scrollable body ── */}
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
+      {/* ── Body — no scroll, compressed to fit ── */}
+      <div style={{ flex: 1, overflowY: "hidden", display: "flex", flexDirection: "column", minHeight: 0 }}>
 
         {/* ── Property signals ── */}
-        <div style={{ padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 10 }}>Property signals</div>
+        <div style={{ padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#8892a4", marginBottom: 8 }}>Property signals</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
 
             {spread !== null && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "11px", color: "#6b7094" }}>Equity spread</span>
+                <span style={{ fontSize: "11px", color: "#9da2ba" }}>Equity spread</span>
                 <span style={{ fontSize: "13px", fontWeight: 800, color: spreadPos ? "#10b981" : "#f87171" }}>
                   {equitySpread(action.avmValue, action.lastSoldPrice)}
                 </span>
@@ -1143,14 +1188,14 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
 
             {action.avmValue && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "11px", color: "#6b7094" }}>Est. value (AVM)</span>
+                <span style={{ fontSize: "11px", color: "#9da2ba" }}>Est. value (AVM)</span>
                 <span style={{ fontSize: "12px", fontWeight: 700, color: "#eceef5" }}>{fmt$(action.avmValue)}</span>
               </div>
             )}
 
             {action.lastSoldPrice && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "11px", color: "#6b7094" }}>Last sold</span>
+                <span style={{ fontSize: "11px", color: "#9da2ba" }}>Last sold</span>
                 <span style={{ fontSize: "12px", fontWeight: 600, color: "#9da2ba" }}>
                   {fmt$(action.lastSoldPrice)} · {fmtDate(action.lastSoldDate)}
                 </span>
@@ -1159,13 +1204,13 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
 
             {action.lastSoldDate && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "11px", color: "#6b7094" }}>Held</span>
+                <span style={{ fontSize: "11px", color: "#9da2ba" }}>Held</span>
                 <span style={{ fontSize: "12px", fontWeight: 600, color: "#9da2ba" }}>{yearsHeld(action.lastSoldDate)}</span>
               </div>
             )}
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: "11px", color: "#6b7094" }}>Owner type</span>
+              <span style={{ fontSize: "11px", color: "#9da2ba" }}>Owner type</span>
               <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 7px", borderRadius: 4,
                 background: action.chips.some(c => c.toLowerCase().includes("absentee")) ? "rgba(245,158,11,0.10)" : "rgba(255,255,255,0.05)",
                 color:      action.chips.some(c => c.toLowerCase().includes("absentee")) ? "#fbbf24"               : "#9da2ba",
@@ -1176,7 +1221,7 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: "11px", color: "#6b7094" }}>Tax delinquent</span>
+              <span style={{ fontSize: "11px", color: "#9da2ba" }}>Tax delinquent</span>
               <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 7px", borderRadius: 4,
                 background: action.chips.some(c => c.toLowerCase().includes("tax")) ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
                 color:      action.chips.some(c => c.toLowerCase().includes("tax")) ? "#f87171"              : "#6b7094",
@@ -1188,7 +1233,7 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
 
             {(action.beds || action.sqft) && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "11px", color: "#6b7094" }}>Property</span>
+                <span style={{ fontSize: "11px", color: "#9da2ba" }}>Property</span>
                 <span style={{ fontSize: "11px", fontWeight: 600, color: "#9da2ba" }}>
                   {[action.beds ? `${action.beds}bd` : null, action.baths ? `${action.baths}ba` : null, fmtSqft(action.sqft)].filter(Boolean).join(" · ")}
                 </span>
@@ -1200,25 +1245,19 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
 
         {/* ── Why it surfaced — chips ── */}
         {action.chips.length > 0 && (
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-            <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>Why it surfaced</div>
+          <div style={{ padding: "8px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+            <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 6 }}>Why it surfaced</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
               {action.chips.map((chip) => (
-                <span key={chip} style={{ fontSize: "10px", fontWeight: 700, padding: "3px 8px", borderRadius: 4,
-                  background: action.tier === "hot" ? "rgba(220,38,38,0.10)" : "rgba(245,158,11,0.10)",
-                  color:      action.tier === "hot" ? "#f87171"              : "#fbbf24",
-                  border:     action.tier === "hot" ? "1px solid rgba(220,38,38,0.18)" : "1px solid rgba(245,158,11,0.20)",
-                }}>
-                  {chip}
-                </span>
+                <ReasonChip key={chip} label={chip} hot={action.tier === "hot"} />
               ))}
             </div>
           </div>
         )}
 
         {/* ── AI Summary ── */}
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>AI Summary</div>
+        <div style={{ padding: "8px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 6 }}>AI Summary</div>
           <div style={{ fontSize: "11.5px", color: "#9da2ba", lineHeight: 1.6, background: "#13151b", borderLeft: "3px solid rgba(59,130,246,0.4)", padding: "10px 12px" }}>
             {action.evidenceSummary || "AI scoring complete. No summary available."}
           </div>
@@ -1230,8 +1269,8 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
         )}
 
         {/* ── Activity timeline ── */}
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 10 }}>Activity</div>
+        <div style={{ padding: "8px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 6 }}>Activity</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             <TimelineEvent dot="grey" label="Ingested into system" sub={action.enrichedAt ? fmtDate(action.enrichedAt) : "Recently"} />
             {action.enrichedAt && (
@@ -1244,7 +1283,7 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
         </div>
 
         {/* ── Actions ── */}
-        <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
           <button
             onClick={() => onNavigate("outreach")}
             style={{ fontSize: "12px", fontWeight: 700, padding: "10px 13px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", background: "var(--accent)", color: "#fff", border: "none", width: "100%", textAlign: "center" }}
