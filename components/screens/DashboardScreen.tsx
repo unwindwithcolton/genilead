@@ -876,16 +876,6 @@ function ActionRow({
         </div>
         {/* Score chip — tappable, opens breakdown popover */}
         <ScoreChip action={action} tierScoreStyle={tierScoreStyle} />
-        {/* CTA button */}
-        <button style={{
-          fontSize: "11px", fontWeight: 700, padding: "6px 13px",
-          borderRadius: 5, cursor: "pointer", whiteSpace: "nowrap",
-          minWidth: 96, textAlign: "center",
-          fontFamily: "inherit", flexShrink: 0,
-          ...tierCtaStyle[action.tier],
-        }}>
-          {action.cta}
-        </button>
       </div>
     </>
   );
