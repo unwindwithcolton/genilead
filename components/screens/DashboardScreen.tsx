@@ -72,6 +72,17 @@ function greetingFor(hour: number): string {
   return "Good evening";
 }
 
+function formatScored(ts: string): string {
+  const d         = new Date(ts);
+  const now       = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  if (d.toDateString() === now.toDateString())       return `today ${time}`;
+  if (d.toDateString() === yesterday.toDateString()) return `yesterday ${time}`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 // Parse reason_codes or evidence_summary into short chip labels
 // Prefers reason_codes array from DB; falls back to keyword scan of evidence_summary
 const REASON_LABELS: Record<string, string | null> = {
@@ -368,6 +379,9 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   const [showZipPopover,  setShowZipPopover]  = useState(false);
   const [newZipInput,     setNewZipInput]     = useState("");
   const [hoveredZip,      setHoveredZip]      = useState<string | null>(null);
+  const [lastScored,      setLastScored]      = useState<string | null>(null);
+  const [isRescoring,     setIsRescoring]     = useState(false);
+  const [reloadKey,       setReloadKey]       = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -395,6 +409,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
           evidence_summary,
           recommended_action,
           reason_codes,
+          updated_at,
           listings (
             address, city, state, zip,
             best_phone, best_email, contact_confidence,
@@ -414,6 +429,14 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
         const total = scores.length;
 
         setMetrics({ hot: hot.length, total, missedSla: 3 }); // missedSla static until outreach_log FK
+
+        // Last scored — most recent updated_at across fetched scores
+        const timestamps = scores
+          .map((s) => (s as { updated_at?: string }).updated_at)
+          .filter(Boolean) as string[];
+        if (timestamps.length > 0) {
+          setLastScored(timestamps.reduce((a, b) => (a > b ? a : b)));
+        }const urgentCount  = actions.filter((a) => a.tier === "hot").length;
 
         // Today's actions — top 6 by score
         const items: ActionItem[] = scores.slice(0, 6).map((s) => {
@@ -485,12 +508,24 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
     }
 
     load();
-  }, []);
+  }, [reloadKey]);
 
   const now          = new Date();
   const greeting     = greetingFor(now.getHours());
   const todayStr     = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const urgentCount  = actions.filter((a) => a.tier === "hot").length;
+
+  async function handleRescore() {
+    setIsRescoring(true);
+    try {
+      await fetch("/api/score-listings", { method: "POST" });
+      setReloadKey((k) => k + 1); // re-runs useEffect → refreshes data + lastScored
+    } catch (err) {
+      console.error("[Dashboard] rescore failed:", err);
+    } finally {
+      setIsRescoring(false);
+    }
+  }
 
   // Tier-driven styles — all CSS variables, no hardcoded hex in JSX
   const tierBorderColor: Record<string, string> = {
@@ -562,45 +597,74 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
 
                 {/* Bar row */}
-                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", flexShrink: 0, marginRight: 2 }}>Territory</span>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 7 }}>
 
-                  {/* Visible chips — first 2 */}
-                  {activeZips.slice(0, 2).map((z) => (
-                    <div
-                      key={z.zip}
-                      onMouseEnter={() => setHoveredZip(z.zip)}
-                      onMouseLeave={() => setHoveredZip(null)}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 10px", background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, cursor: "default", transition: "border-color 0.15s" }}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "0.02em", lineHeight: 1 }}>{z.zip}</span>
-                        {z.city && <span style={{ fontSize: 9.5, fontWeight: 500, color: "var(--text-muted)", lineHeight: 1 }}>{z.city}</span>}
-                      </div>
+                  {/* Left — territory chips */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", flexShrink: 0, marginRight: 2 }}>Territory</span>
+
+                    {/* Visible chips — first 2 */}
+                    {activeZips.slice(0, 2).map((z) => (
                       <div
-                        onClick={() => setActiveZips(prev => prev.filter(az => az.zip !== z.zip))}
-                        style={{ width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, cursor: "pointer", opacity: hoveredZip === z.zip ? 1 : 0, transition: "opacity 0.15s", color: "var(--text-muted)", fontSize: 10, fontWeight: 700 }}
-                      >✕</div>
-                    </div>
-                  ))}
+                        key={z.zip}
+                        onMouseEnter={() => setHoveredZip(z.zip)}
+                        onMouseLeave={() => setHoveredZip(null)}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 10px", background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, cursor: "default", transition: "border-color 0.15s" }}
+                      >
+                        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "0.02em", lineHeight: 1 }}>{z.zip}</span>
+                          {z.city && <span style={{ fontSize: 9.5, fontWeight: 500, color: "var(--text-muted)", lineHeight: 1 }}>{z.city}</span>}
+                        </div>
+                        <div
+                          onClick={() => setActiveZips(prev => prev.filter(az => az.zip !== z.zip))}
+                          style={{ width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, cursor: "pointer", opacity: hoveredZip === z.zip ? 1 : 0, transition: "opacity 0.15s", color: "var(--text-muted)", fontSize: 10, fontWeight: 700 }}
+                        >✕</div>
+                      </div>
+                    ))}
 
-                  {/* Overflow chip */}
-                  {activeZips.length > 2 && (
+                    {/* Overflow chip */}
+                    {activeZips.length > 2 && (
+                      <div
+                        onClick={() => setShowZipPopover(v => !v)}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", cursor: "pointer" }}
+                      >
+                        +{activeZips.length - 2} more ▾
+                      </div>
+                    )}
+
+                    {/* Add ZIP */}
                     <div
                       onClick={() => setShowZipPopover(v => !v)}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", cursor: "pointer" }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", background: "transparent", border: "1px dashed rgba(59,130,246,0.30)", borderRadius: 8, fontSize: 12, fontWeight: 500, color: "var(--accent)", cursor: "pointer" }}
                     >
-                      +{activeZips.length - 2} more ▾
+                      + Add ZIP
                     </div>
-                  )}
-
-                  {/* Add ZIP */}
-                  <div
-                    onClick={() => setShowZipPopover(v => !v)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", background: "transparent", border: "1px dashed rgba(59,130,246,0.30)", borderRadius: 8, fontSize: 12, fontWeight: 500, color: "var(--accent)", cursor: "pointer" }}
-                  >
-                    + Add ZIP
                   </div>
+
+                  {/* Right — data freshness + re-score */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                    {lastScored && (
+                      <span style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.01em" }}>
+                        Scored <span style={{ color: "var(--text-secondary)" }}>{formatScored(lastScored)}</span>
+                      </span>
+                    )}
+                    <button
+                      onClick={handleRescore}
+                      disabled={isRescoring}
+                      style={{
+                        fontSize: 11, fontWeight: 600, padding: "5px 11px",
+                        borderRadius: 7, cursor: isRescoring ? "default" : "pointer",
+                        fontFamily: "inherit", background: "transparent",
+                        border: "1px solid rgba(255,255,255,0.09)",
+                        color: isRescoring ? "var(--text-muted)" : "var(--text-secondary)",
+                        opacity: isRescoring ? 0.5 : 1,
+                        transition: "color 0.15s, border-color 0.15s",
+                      }}
+                    >
+                      {isRescoring ? "Scoring…" : "Re-score"}
+                    </button>
+                  </div>
+
                 </div>
 
                 {/* Pulse hint */}
