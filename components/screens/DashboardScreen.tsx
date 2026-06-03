@@ -26,6 +26,7 @@ interface ActionItem {
   evidenceSummary: string;
   recommendedAction: string | null;
   confidenceScore: number;
+  zip: string;
   // Enrichment — only present when contactConfidence is high or medium
   bestPhone:         string | null;
   bestPhoneType:     "mobile" | "landline" | "voip" | "unknown" | null;
@@ -363,6 +364,10 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   const [loading,  setLoading]  = useState(true);
   const [userName,        setUserName]        = useState<string>("");
   const [selectedAction,  setSelectedAction]  = useState<ActionItem | null>(null);
+  const [activeZips,      setActiveZips]      = useState<Array<{zip: string; city: string}>>([{ zip: "60950", city: "" }]);
+  const [showZipPopover,  setShowZipPopover]  = useState(false);
+  const [newZipInput,     setNewZipInput]     = useState("");
+  const [hoveredZip,      setHoveredZip]      = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -434,6 +439,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             listingId: s.listing_id,
             address:   listing?.address ?? "Unknown address",
             city:      listing?.city    ?? "",
+            zip:       listing?.zip     ?? "",
             reason:    reasonFrom(s.evidence_summary ?? "", s.reason_codes ?? []),
             cta:               ctaFrom(tier, s.recommended_action),
             tier,
@@ -551,32 +557,106 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
           <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Loading...</div>
         ) : (
           <>
-            {/* ── ZIP selector ── */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)" }}>Area</span>
-              <div style={{ display: "flex", gap: 6 }}>
-                {[
-                  { zip: "60950", label: "60950", hot: 2, warm: 7 },
-                ].map(z => (
-                  <div key={z.zip} style={{
-                    display: "flex", alignItems: "center", gap: 7,
-                    padding: "5px 12px", borderRadius: 20,
-                    background: "rgba(59,130,246,0.12)",
-                    border: "1px solid rgba(59,130,246,0.35)",
-                    cursor: "pointer",
-                  }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#c0c8e0" }}>{z.zip}</span>
-                    <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 700 }}>{z.hot} HOT</span>
-                    <span style={{ fontSize: 10, color: "#f59e0b", fontWeight: 700 }}>{z.warm} WARM</span>
+            {/* ── Territory selector ── */}
+            <div style={{ position: "relative" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+
+                {/* Bar row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", flexShrink: 0, marginRight: 2 }}>Territory</span>
+
+                  {/* Visible chips — first 2 */}
+                  {activeZips.slice(0, 2).map((z) => (
+                    <div
+                      key={z.zip}
+                      onMouseEnter={() => setHoveredZip(z.zip)}
+                      onMouseLeave={() => setHoveredZip(null)}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 10px", background: "var(--bg-card)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8, cursor: "default", transition: "border-color 0.15s" }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "0.02em", lineHeight: 1 }}>{z.zip}</span>
+                        {z.city && <span style={{ fontSize: 9.5, fontWeight: 500, color: "var(--text-muted)", lineHeight: 1 }}>{z.city}</span>}
+                      </div>
+                      <div
+                        onClick={() => setActiveZips(prev => prev.filter(az => az.zip !== z.zip))}
+                        style={{ width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, cursor: "pointer", opacity: hoveredZip === z.zip ? 1 : 0, transition: "opacity 0.15s", color: "var(--text-muted)", fontSize: 10, fontWeight: 700 }}
+                      >✕</div>
+                    </div>
+                  ))}
+
+                  {/* Overflow chip */}
+                  {activeZips.length > 2 && (
+                    <div
+                      onClick={() => setShowZipPopover(v => !v)}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", cursor: "pointer" }}
+                    >
+                      +{activeZips.length - 2} more ▾
+                    </div>
+                  )}
+
+                  {/* Add ZIP */}
+                  <div
+                    onClick={() => setShowZipPopover(v => !v)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", background: "transparent", border: "1px dashed rgba(59,130,246,0.30)", borderRadius: 8, fontSize: 12, fontWeight: 500, color: "var(--accent)", cursor: "pointer" }}
+                  >
+                    + Add ZIP
                   </div>
-                ))}
-                <button style={{
-                  padding: "5px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600,
-                  background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
-                  color: "var(--text-muted)", cursor: "pointer",
-                }}>+ Add ZIP</button>
+                </div>
+
+                {/* Pulse hint */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text-muted)" }}>
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", flexShrink: 0, animation: "hintPulse 2.8s ease-in-out infinite" }} />
+                  <style>{`@keyframes hintPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }`}</style>
+                  Pulse showing&nbsp;<strong style={{ color: "var(--text-secondary)", fontWeight: 600 }}>{actions.length} leads</strong>&nbsp;from {activeZips.length} market{activeZips.length !== 1 ? "s" : ""}
+                </div>
               </div>
+
+              {/* Popover */}
+              {showZipPopover && (
+                <>
+                  <div onClick={() => setShowZipPopover(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                  <div style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 50, background: "var(--bg-surface)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, padding: 14, width: 260, boxShadow: "0 16px 40px rgba(0,0,0,0.5)" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 10 }}>Active Markets</div>
+
+                    {/* Search / add input */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 7, padding: "6px 10px", marginBottom: 10 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ opacity: 0.4, flexShrink: 0 }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                      <input
+                        placeholder="Search or add ZIP…"
+                        value={newZipInput}
+                        onChange={e => setNewZipInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && newZipInput.trim()) {
+                            const zip = newZipInput.trim();
+                            if (!activeZips.find(z => z.zip === zip)) {
+                              setActiveZips(prev => [...prev, { zip, city: "" }]);
+                            }
+                            setNewZipInput("");
+                          }
+                        }}
+                        style={{ background: "none", border: "none", outline: "none", fontFamily: "inherit", fontSize: 12, color: "var(--text-primary)", width: "100%" }}
+                      />
+                    </div>
+
+                    {/* Active ZIP list */}
+                    {activeZips.map(z => (
+                      <div key={z.zip} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 8px", borderRadius: 6 }}>
+                        <div>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)" }}>{z.zip}</div>
+                          {z.city && <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{z.city}</div>}
+                        </div>
+                        <button
+                          onClick={() => setActiveZips(prev => prev.filter(az => az.zip !== z.zip))}
+                          style={{ fontSize: 11, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "2px 6px", borderRadius: 4 }}
+                        >Remove</button>
+                      </div>
+                    ))}
+
+                    <div style={{ height: 1, background: "var(--border)", margin: "8px 0" }} />
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", paddingLeft: 8 }}>Press Enter to add a ZIP</div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* ── KPI row — all 4 cards operational ───────────────────────── */}
@@ -605,8 +685,8 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
               />
               <KpiCard
                 label="Active Zips"
-                value="1"
-                sub="zip 90210"
+                value={activeZips.length}
+                sub={activeZips.length === 1 ? `zip ${activeZips[0].zip}` : `${activeZips.length} markets`}
                 variant="neutral"
               />
             </div>
@@ -802,14 +882,25 @@ function ActionRow({
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Address */}
-          <div style={{
-            fontSize: "13px", fontWeight: 700,
-            color: action.tier === "nurture" ? "#c8ccd8" : "#eceef5",
-            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-            letterSpacing: "0.01em", marginBottom: 4,
-          }}>
-            {action.address}{action.city ? `, ${action.city}` : ""}
+          {/* Address + ZIP source badge */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, minWidth: 0 }}>
+            <div style={{
+              fontSize: "13px", fontWeight: 700,
+              color: action.tier === "nurture" ? "#c8ccd8" : "#eceef5",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              letterSpacing: "0.01em", flex: 1, minWidth: 0,
+            }}>
+              {action.address}{action.city ? `, ${action.city}` : ""}
+            </div>
+            {action.zip && (
+              <span style={{
+                fontSize: "9.5px", fontWeight: 600, padding: "2px 6px",
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 4, color: "var(--text-muted)", letterSpacing: "0.04em", flexShrink: 0,
+              }}>
+                {action.zip}
+              </span>
+            )}
           </div>
           {/* Tag line */}
           <div style={{
