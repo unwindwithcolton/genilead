@@ -26,6 +26,14 @@ interface ActionItem {
   evidenceSummary: string;
   recommendedAction: string | null;
   confidenceScore: number;
+  zip: string;
+  // Property signals
+  avmValue:       number | null;
+  lastSoldPrice:  number | null;
+  lastSoldDate:   string | null;
+  sqft:           number | null;
+  beds:           number | null;
+  baths:          number | null;
   // Enrichment — only present when contactConfidence is high or medium
   bestPhone:         string | null;
   bestPhoneType:     "mobile" | "landline" | "voip" | "unknown" | null;
@@ -363,6 +371,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   const [loading,  setLoading]  = useState(true);
   const [userName,        setUserName]        = useState<string>("");
   const [selectedAction,  setSelectedAction]  = useState<ActionItem | null>(null);
+  const [dismissedIds,    setDismissedIds]    = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function load() {
@@ -392,6 +401,8 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
           reason_codes,
           listings (
             address, city, state, zip,
+            beds, baths, sqft,
+            avm_value, last_sold_price, last_sold_date,
             best_phone, best_email, contact_confidence,
             enriched_at
           )
@@ -418,6 +429,12 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             city:               string;
             state:              string;
             zip:                string;
+            beds:               number | null;
+            baths:              number | null;
+            sqft:               number | null;
+            avm_value:          number | null;
+            last_sold_price:    number | null;
+            last_sold_date:     string | null;
             best_phone:         string | null;
             best_email:         string | null;
             contact_confidence: "high" | "medium" | "low" | "none" | null;
@@ -451,6 +468,13 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             confidenceReason:  null,
             enrichedAt:        listing?.enriched_at ?? null,
             canRefresh:        daysSinceEnriched === null || daysSinceEnriched >= 7,
+            zip:           listing?.zip            ?? "",
+            avmValue:      listing?.avm_value      ?? null,
+            lastSoldPrice: listing?.last_sold_price ?? null,
+            lastSoldDate:  listing?.last_sold_date  ?? null,
+            sqft:          listing?.sqft            ?? null,
+            beds:          listing?.beds            ?? null,
+            baths:         listing?.baths           ?? null,
           };
         });
         setActions(items);
@@ -481,10 +505,11 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
     load();
   }, []);
 
-  const now          = new Date();
-  const greeting     = greetingFor(now.getHours());
-  const todayStr     = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
-  const urgentCount  = actions.filter((a) => a.tier === "hot").length;
+  const now            = new Date();
+  const greeting       = greetingFor(now.getHours());
+  const todayStr       = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const visibleActions = actions.filter((a) => !dismissedIds.has(a.id));
+  const urgentCount    = visibleActions.filter((a) => a.tier === "hot").length;
 
   // Tier-driven styles — all CSS variables, no hardcoded hex in JSX
   const tierBorderColor: Record<string, string> = {
@@ -633,14 +658,14 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                     </button>
                   </div>
 
-                  {actions.length === 0 ? (
+                  {visibleActions.length === 0 ? (
                     <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px" }}>
                       No scored leads yet. Ingest runs daily at 6:00 AM.
                     </div>
                   ) : (
                     <div>
-                      {actions.map((action, i) => {
-                        const prevTier   = i > 0 ? actions[i - 1].tier : null;
+                      {visibleActions.map((action, i) => {
+                        const prevTier   = i > 0 ? visibleActions[i - 1].tier : null;
                         const showDivider = action.tier === "nurture" && prevTier !== "nurture";
                         const isSelected  = selectedAction?.id === action.id;
                         return (
@@ -675,6 +700,10 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                   onRefreshed={(updated) => setSelectedAction((prev) =>
                     prev ? { ...prev, ...updated } : prev
                   )}
+                  onDismiss={() => {
+                    setDismissedIds((prev) => new Set([...prev, selectedAction.id]));
+                    setSelectedAction(null);
+                  }}
                 />
               )}
             </div>
@@ -976,29 +1005,85 @@ function ContactSection({ action, onRefreshed }: {
   );
 }
 
+// ─── Helpers — signal formatting ─────────────────────────────────────────────
+
+function fmt$(n: number | null): string {
+  if (!n) return "—";
+  return "$" + (n >= 1_000_000
+    ? (n / 1_000_000).toFixed(1) + "M"
+    : (n / 1_000).toFixed(0) + "k");
+}
+
+function fmtSqft(n: number | null): string {
+  if (!n) return "—";
+  return n.toLocaleString() + " sqft";
+}
+
+function fmtDate(s: string | null): string {
+  if (!s) return "—";
+  return new Date(s).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+function equitySpread(avm: number | null, lastSold: number | null): string {
+  if (!avm || !lastSold) return "—";
+  const spread = avm - lastSold;
+  return (spread >= 0 ? "+" : "") + fmt$(spread);
+}
+
+function yearsHeld(lastSoldDate: string | null): string {
+  if (!lastSoldDate) return "—";
+  const years = Math.floor((Date.now() - new Date(lastSoldDate).getTime()) / (365.25 * 86_400_000));
+  if (years < 1) return "< 1 yr";
+  return `${years} yr${years !== 1 ? "s" : ""}`;
+}
+
+// ─── TimelineEvent ────────────────────────────────────────────────────────────
+
+function TimelineEvent({ dot, label, sub, muted }: {
+  dot: "grey" | "green" | "blue" | "amber";
+  label: string;
+  sub?: string;
+  muted?: boolean;
+}) {
+  const dotColor = {
+    grey:  "#252836",
+    green: "var(--success)",
+    blue:  "var(--accent)",
+    amber: "var(--warm)",
+  }[dot];
+
+  return (
+    <div style={{ display: "flex", gap: 10, paddingBottom: 12, position: "relative" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+        <div style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0, marginTop: 3 }} />
+        <div style={{ width: 1, flex: 1, background: "rgba(255,255,255,0.05)", marginTop: 4 }} />
+      </div>
+      <div style={{ flex: 1, paddingBottom: 2 }}>
+        <div style={{ fontSize: "11.5px", fontWeight: 600, color: muted ? "#3a3f55" : "#9da2ba", lineHeight: 1.4 }}>{label}</div>
+        {sub && <div style={{ fontSize: "10px", color: "#3a3f55", marginTop: 2, lineHeight: 1.4 }}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
 // ─── PulseDrawer ──────────────────────────────────────────────────────────────
 
-function PulseDrawer({ action, onClose, onNavigate, onRefreshed }: {
+function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
   action: ActionItem;
   onClose: () => void;
   onNavigate: (tab: Tab) => void;
   onRefreshed: (updated: Partial<ActionItem>) => void;
+  onDismiss: () => void;
 }) {
   const tierBadgeStyle: Record<string, React.CSSProperties> = {
     hot:     { background: "rgba(220,38,38,0.18)",  color: "#f87171"  },
     warm:    { background: "rgba(245,158,11,0.14)",  color: "#fbbf24"  },
     nurture: { background: "rgba(255,255,255,0.06)", color: "#6b7094"  },
   };
-  const recBorderColor: Record<string, string> = {
-    hot:     "rgba(220,38,38,0.22)",
-    warm:    "rgba(245,158,11,0.18)",
-    nurture: "rgba(255,255,255,0.07)",
-  };
-  const primaryCtaStyle: Record<string, React.CSSProperties> = {
-    hot:     { background: "#dc2626", color: "#fff", border: "none" },
-    warm:    { background: "transparent", color: "var(--warm)", border: "1.5px solid rgba(245,158,11,0.40)" },
-    nurture: { background: "transparent", color: "#5a6080", border: "1.5px solid #252836" },
-  };
+
+  const spread    = action.avmValue && action.lastSoldPrice ? action.avmValue - action.lastSoldPrice : null;
+  const spreadPos = spread !== null && spread >= 0;
+  const hasFubActivity = false; // gate: true once FUB key is live and activity exists
 
   return (
     <div style={{
@@ -1017,7 +1102,7 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed }: {
         }
       `}</style>
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div style={{ background: "#0b0d11", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "12px 16px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0 }}>
         <div>
           <div style={{ fontSize: "13px", fontWeight: 800, color: "#eceef5", letterSpacing: "0.01em", marginBottom: 5 }}>
@@ -1028,21 +1113,101 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed }: {
               {action.tier.toUpperCase()}
             </span>
             <span style={{ fontSize: "11px", fontWeight: 800, color: "#6b7094" }}>Score {action.score}</span>
+            {action.zip && (
+              <span style={{ fontSize: "9.5px", fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7094", letterSpacing: "0.04em" }}>
+                {action.zip}
+              </span>
+            )}
           </div>
         </div>
         <button onClick={onClose} style={{ background: "none", border: "none", color: "#3a3f55", cursor: "pointer", fontSize: "16px", lineHeight: 1, padding: 0, fontFamily: "inherit" }}>✕</button>
       </div>
 
-      {/* Scrollable body */}
+      {/* ── Scrollable body ── */}
       <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
 
-        {/* Why it surfaced */}
+        {/* ── Property signals ── */}
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 10 }}>Property signals</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+
+            {spread !== null && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "11px", color: "#6b7094" }}>Equity spread</span>
+                <span style={{ fontSize: "13px", fontWeight: 800, color: spreadPos ? "#10b981" : "#f87171" }}>
+                  {equitySpread(action.avmValue, action.lastSoldPrice)}
+                </span>
+              </div>
+            )}
+
+            {action.avmValue && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "11px", color: "#6b7094" }}>Est. value (AVM)</span>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "#eceef5" }}>{fmt$(action.avmValue)}</span>
+              </div>
+            )}
+
+            {action.lastSoldPrice && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "11px", color: "#6b7094" }}>Last sold</span>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "#9da2ba" }}>
+                  {fmt$(action.lastSoldPrice)} · {fmtDate(action.lastSoldDate)}
+                </span>
+              </div>
+            )}
+
+            {action.lastSoldDate && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "11px", color: "#6b7094" }}>Held</span>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "#9da2ba" }}>{yearsHeld(action.lastSoldDate)}</span>
+              </div>
+            )}
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: "11px", color: "#6b7094" }}>Owner type</span>
+              <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 7px", borderRadius: 4,
+                background: action.chips.some(c => c.toLowerCase().includes("absentee")) ? "rgba(245,158,11,0.10)" : "rgba(255,255,255,0.05)",
+                color:      action.chips.some(c => c.toLowerCase().includes("absentee")) ? "#fbbf24"               : "#9da2ba",
+                border:     action.chips.some(c => c.toLowerCase().includes("absentee")) ? "1px solid rgba(245,158,11,0.20)" : "1px solid rgba(255,255,255,0.07)",
+              }}>
+                {action.chips.some(c => c.toLowerCase().includes("absentee")) ? "Absentee" : "Owner-occupied"}
+              </span>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: "11px", color: "#6b7094" }}>Tax delinquent</span>
+              <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 7px", borderRadius: 4,
+                background: action.chips.some(c => c.toLowerCase().includes("tax")) ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
+                color:      action.chips.some(c => c.toLowerCase().includes("tax")) ? "#f87171"              : "#6b7094",
+                border:     action.chips.some(c => c.toLowerCase().includes("tax")) ? "1px solid rgba(220,38,38,0.18)" : "1px solid rgba(255,255,255,0.06)",
+              }}>
+                {action.chips.some(c => c.toLowerCase().includes("tax")) ? "Yes" : "No"}
+              </span>
+            </div>
+
+            {(action.beds || action.sqft) && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "11px", color: "#6b7094" }}>Property</span>
+                <span style={{ fontSize: "11px", fontWeight: 600, color: "#9da2ba" }}>
+                  {[action.beds ? `${action.beds}bd` : null, action.baths ? `${action.baths}ba` : null, fmtSqft(action.sqft)].filter(Boolean).join(" · ")}
+                </span>
+              </div>
+            )}
+
+          </div>
+        </div>
+
+        {/* ── Why it surfaced — chips ── */}
         {action.chips.length > 0 && (
           <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
             <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>Why it surfaced</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
               {action.chips.map((chip) => (
-                <span key={chip} style={{ fontSize: "10px", fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: action.tier === "hot" ? "rgba(220,38,38,0.10)" : "rgba(245,158,11,0.10)", color: action.tier === "hot" ? "#f87171" : "#fbbf24", border: action.tier === "hot" ? "1px solid rgba(220,38,38,0.18)" : "1px solid rgba(245,158,11,0.20)" }}>
+                <span key={chip} style={{ fontSize: "10px", fontWeight: 700, padding: "3px 8px", borderRadius: 4,
+                  background: action.tier === "hot" ? "rgba(220,38,38,0.10)" : "rgba(245,158,11,0.10)",
+                  color:      action.tier === "hot" ? "#f87171"              : "#fbbf24",
+                  border:     action.tier === "hot" ? "1px solid rgba(220,38,38,0.18)" : "1px solid rgba(245,158,11,0.20)",
+                }}>
                   {chip}
                 </span>
               ))}
@@ -1050,12 +1215,7 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed }: {
           </div>
         )}
 
-        {/* Contact — only when high or medium confidence */}
-        {(action.contactConfidence === "high" || action.contactConfidence === "medium") && (
-          <ContactSection action={action} onRefreshed={onRefreshed} />
-        )}
-
-        {/* AI Summary */}
+        {/* ── AI Summary ── */}
         <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
           <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 8 }}>AI Summary</div>
           <div style={{ fontSize: "11.5px", color: "#9da2ba", lineHeight: 1.6, background: "#13151b", borderLeft: "3px solid rgba(59,130,246,0.4)", padding: "10px 12px" }}>
@@ -1063,52 +1223,57 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed }: {
           </div>
         </div>
 
-        {/* Last activity */}
+        {/* ── Contact — quick reference ── */}
+        {(action.contactConfidence === "high" || action.contactConfidence === "medium") && (
+          <ContactSection action={action} onRefreshed={onRefreshed} />
+        )}
+
+        {/* ── Activity timeline ── */}
         <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55" }}>Last activity</div>
+          <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 10 }}>Activity</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            <TimelineEvent dot="grey" label="Ingested into system" sub={action.enrichedAt ? fmtDate(action.enrichedAt) : "Recently"} />
+            {action.enrichedAt && (
+              <TimelineEvent dot="blue" label="Skip trace ran" sub={action.contactConfidence ? `BatchData · ${action.contactConfidence === "high" ? "Verified match" : "Likely match"}` : "BatchData · No match"} />
+            )}
+            {!hasFubActivity && (
+              <TimelineEvent dot="grey" label="No contact attempts logged" sub="FUB activity will appear here once API key is connected" muted />
+            )}
+          </div>
+        </div>
+
+        {/* ── Actions ── */}
+        <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <button
+            onClick={() => onNavigate("outreach")}
+            style={{ fontSize: "12px", fontWeight: 700, padding: "10px 13px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", background: "var(--accent)", color: "#fff", border: "none", width: "100%", textAlign: "center" }}
+          >
+            Open in Outreach →
+          </button>
+          {hasFubActivity && (
             <button
               onClick={() => onNavigate("inbox")}
-              style={{ fontSize: "10px", fontWeight: 600, color: "var(--accent)", background: "none", border: "1px solid rgba(59,130,246,0.22)", borderRadius: 4, padding: "2px 8px", cursor: "pointer", fontFamily: "inherit" }}
+              style={{ fontSize: "11px", fontWeight: 600, padding: "8px 13px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "var(--accent)", border: "1px solid rgba(59,130,246,0.30)", width: "100%", textAlign: "center" }}
             >
               Open in Inbox →
             </button>
-          </div>
-          {/* Max 3 activity bullets — static until outreach_log FK wired */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#252836", flexShrink: 0 }} />
-            <span style={{ fontSize: "11px", color: "#6b7094" }}>No outreach logged — <span style={{ color: "#9da2ba" }}>never contacted</span></span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--success)", flexShrink: 0 }} />
-            <span style={{ fontSize: "11px", color: "#6b7094" }}>Score updated <span style={{ color: "#9da2ba" }}>today, 6:31 AM</span></span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#252836", flexShrink: 0 }} />
-            <span style={{ fontSize: "11px", color: "#6b7094" }}>Ingested <span style={{ color: "#9da2ba" }}>this morning</span></span>
-          </div>
-        </div>
-
-        {/* Primary CTA + secondary actions */}
-        <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
-          <button style={{ fontSize: "12px", fontWeight: 700, padding: "9px 13px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", ...primaryCtaStyle[action.tier] }}>
-            {action.cta}
-          </button>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-            <button style={{ fontSize: "11px", fontWeight: 600, padding: "7px 10px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#6b7094", border: "1.5px solid rgba(255,255,255,0.07)" }}>Text today</button>
-            <button style={{ fontSize: "11px", fontWeight: 600, padding: "7px 10px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#6b7094", border: "1.5px solid rgba(255,255,255,0.07)" }}>Mark handled</button>
-          </div>
-          <button style={{ fontSize: "11px", fontWeight: 600, padding: "7px 13px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#3a3f55", border: "1.5px solid #1a1d26" }}>
-            Send to nurture
+          )}
+          <button
+            onClick={onDismiss}
+            style={{ fontSize: "11px", fontWeight: 600, padding: "7px 13px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", background: "transparent", color: "#3a3f55", border: "1px solid #1a1d26", width: "100%", textAlign: "center" }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = "#f87171";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(220,38,38,0.20)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = "#3a3f55";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "#1a1d26";
+            }}
+          >
+            Dismiss
           </button>
         </div>
-      </div>
 
-      {/* Footer */}
-      <div style={{ padding: "10px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
-        <button onClick={() => onNavigate("opportunities")} style={{ fontSize: "10.5px", fontWeight: 600, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-          Open full record in Opportunities →
-        </button>
       </div>
     </div>
   );
