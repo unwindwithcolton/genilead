@@ -680,11 +680,11 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             </div>
 
             {/* ── Today's Pulse + slide-in drawer ──────────────────────────── */}
-            <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: selectedAction ? "none" : "1px solid var(--border)", maxHeight: 540 }}>
+            <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--border)", height: 480 }}>
 
               {/* Pulse list — compresses when drawer is open */}
-              <div style={{ flex: selectedAction ? "0 0 52%" : "1 1 100%", transition: "flex-basis 0.3s cubic-bezier(0.4,0,0.2,1)", minWidth: 0, overflow: "hidden", outline: "none" }}>
-                <div style={{ background: "var(--bg-surface)" }}>
+              <div style={{ flex: selectedAction ? "0 0 52%" : "1 1 100%", transition: "flex-basis 0.3s cubic-bezier(0.4,0,0.2,1)", minWidth: 0, overflow: "hidden", outline: "none", display: "flex", flexDirection: "column", height: "100%" }}>
+                <div style={{ background: "var(--bg-surface)", display: "flex", flexDirection: "column", height: "100%" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#8b90a8" }}>
@@ -706,7 +706,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                       No scored leads yet. Ingest runs daily at 6:00 AM.
                     </div>
                   ) : (
-                    <div>
+                    <div style={{ overflowY: "auto", flex: 1 }}>
                       {visibleActions.map((action, i) => {
                         const prevTier   = i > 0 ? visibleActions[i - 1].tier : null;
                         const showDivider = action.tier === "nurture" && prevTier !== "nurture";
