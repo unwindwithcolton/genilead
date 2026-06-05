@@ -680,7 +680,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             </div>
 
             {/* ── Today's Pulse + slide-in drawer ──────────────────────────── */}
-            <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: selectedAction ? "none" : "1px solid var(--border)" }}>
+            <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: selectedAction ? "none" : "1px solid var(--border)", maxHeight: 540 }}>
 
               {/* Pulse list — compresses when drawer is open */}
               <div style={{ flex: selectedAction ? "0 0 52%" : "1 1 100%", transition: "flex-basis 0.3s cubic-bezier(0.4,0,0.2,1)", minWidth: 0, overflow: "hidden", outline: "none" }}>
@@ -1169,8 +1169,8 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
         <button onClick={onClose} style={{ background: "none", border: "none", color: "#3a3f55", cursor: "pointer", fontSize: "16px", lineHeight: 1, padding: 0, fontFamily: "inherit" }}>✕</button>
       </div>
 
-      {/* ── Body — no scroll, compressed to fit ── */}
-      <div style={{ flex: 1, overflowY: "hidden", display: "flex", flexDirection: "column", minHeight: 0 }}>
+      {/* ── Body — scrollable ── */}
+      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
 
         {/* ── Property signals ── */}
         <div style={{ padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
