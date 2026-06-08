@@ -596,14 +596,14 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
         pointerEvents: "none",
       }}>
         <ClosingPlasma
-          speed={1}
-          turbulence={1}
-          mouseInfluence={1}
-          grain={1}
-          sparkle={1}
+          speed={0.4}
+          turbulence={0.4}
+          mouseInfluence={0}
+          grain={0.5}
+          sparkle={0.3}
           vignette={1}
-          opacity={1}
-          interactive={true}
+          opacity={0.85}
+          interactive={false}
           className="w-full h-full"
         />
         <div style={{
