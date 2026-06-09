@@ -1209,12 +1209,6 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
             <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 7px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.05em", ...tierBadgeStyle[action.tier] }}>
               {action.tier.toUpperCase()}
             </span>
-            <span style={{ fontSize: "11px", fontWeight: 800, color: "#6b7094" }}>Score {action.score}</span>
-            {action.zip && (
-              <span style={{ fontSize: "9.5px", fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7094", letterSpacing: "0.04em" }}>
-                {action.zip}
-              </span>
-            )}
           </div>
         </div>
         <button onClick={onClose} style={{ background: "none", border: "none", color: "#3a3f55", cursor: "pointer", fontSize: "16px", lineHeight: 1, padding: 0, fontFamily: "inherit" }}>✕</button>
