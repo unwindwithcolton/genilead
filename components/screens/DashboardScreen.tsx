@@ -749,8 +749,8 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--border)", minHeight: "calc(100vh - 260px)" }}>
 
               {/* Pulse list — compresses when drawer is open */}
-              <div style={{ flex: selectedAction ? "0 0 52%" : "1 1 100%", transition: "flex-basis 0.3s cubic-bezier(0.4,0,0.2,1)", minWidth: 0, overflow: "hidden", outline: "none", display: "flex", flexDirection: "column", height: "100%" }}>
-                <div style={{ background: "var(--bg-surface)", display: "flex", flexDirection: "column", height: "100%" }}>
+              <div style={{ flex: selectedAction ? "0 0 52%" : "1 1 100%", transition: "flex-basis 0.3s cubic-bezier(0.4,0,0.2,1)", minWidth: 0, overflow: "hidden", outline: "none", display: "flex", flexDirection: "column" }}>
+                <div style={{ background: "var(--bg-surface)", display: "flex", flexDirection: "column", flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#8b90a8" }}>
