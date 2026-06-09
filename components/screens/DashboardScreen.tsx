@@ -400,7 +400,43 @@ function ReasonChip({ label, hot }: { label: string; hot?: boolean }) {
     </div>
   );
 }
+// ─── PipelineStrip ────────────────────────────────────────────────────────────
 
+function PipelineStrip({ greeting, userName, todayStr, hot, warm, total, skipCoverage }: {
+  greeting: string; userName: string; todayStr: string;
+  hot: number; warm: number; total: number; skipCoverage: number;
+}) {
+  const avgScore  = total > 0 ? Math.round(((hot * 80) + (warm * 50)) / total) : 0;
+  const heatPct   = Math.min(100, Math.max(0, avgScore));
+  const heatWord  = heatPct >= 70 ? "HOT ↑" : heatPct >= 45 ? "WARMING ↑" : heatPct >= 25 ? "COOL" : "COLD ↓";
+  const heatColor = heatPct >= 70 ? "#ef4444" : heatPct >= 45 ? "#f59e0b" : "#3b82f6";
+  return (
+    <div style={{ display: "flex", alignItems: "stretch", background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", overflow: "hidden" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "14px 20px", flexShrink: 0 }}>
+        <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55" }}>Agent</div>
+        <div style={{ fontSize: "15px", fontWeight: 700, color: "#eceef5" }}>{greeting}{userName ? `, ${userName}` : ""}</div>
+        <div style={{ fontSize: "10px", color: "#3a3f55" }}>{todayStr}</div>
+      </div>
+      <div style={{ width: 1, background: "rgba(255,255,255,0.05)", flexShrink: 0 }} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 5, padding: "14px 20px", flex: "1 1 61.8%" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55" }}>Pipeline heat</span>
+          <span style={{ fontSize: "10px", fontWeight: 800, color: heatColor }}>{heatWord}</span>
+        </div>
+        <div style={{ height: 4, background: "rgba(255,255,255,0.05)", borderRadius: 99, overflow: "hidden" }}>
+          <div style={{ height: "100%", borderRadius: 99, width: `${heatPct}%`, background: "linear-gradient(90deg, #3b82f6 0%, #f59e0b 55%, #ef4444 100%)", transition: "width 0.6s ease" }} />
+        </div>
+        <div style={{ fontSize: "9px", color: "#3a3f55" }}>Avg score {avgScore} · {hot} HOT · {warm} WARM · {total} leads total</div>
+      </div>
+      <div style={{ width: 1, background: "rgba(255,255,255,0.05)", flexShrink: 0 }} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "14px 20px", flexShrink: 0, alignItems: "flex-end" }}>
+        <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55" }}>Skip trace coverage</div>
+        <div style={{ fontSize: "20px", fontWeight: 800, lineHeight: 1, color: skipCoverage > 0 ? "#10b981" : "#6b7094" }}>{skipCoverage}<span style={{ fontSize: "11px", fontWeight: 600, color: "#3a3f55" }}>%</span></div>
+        <div style={{ fontSize: "9px", color: "#3a3f55" }}>{skipCoverage > 0 ? "BatchData connected" : "BatchData not connected"}</div>
+      </div>
+    </div>
+  );
+}
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface DashboardScreenProps {
@@ -698,37 +734,16 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
               </div>
             </div>
 
-            {/* ── KPI row — all 4 cards operational ───────────────────────── */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
-              <KpiCard
-                label="Unworked Hot"
-                value={metrics.hot}
-                sub="Need a call today"
-                variant="hot"
-                pulse
-                onClick={metrics.hot > 0 ? () => onNavigate("outreach") : undefined}
-              />
-              <KpiCard
-                label="Needs Follow-Up"
-                value={unworked.length}
-                sub="Scored ≥ 40, no outreach"
-                variant="amber"
-                pulse
-                onClick={unworked.length > 0 ? () => onNavigate("outreach") : undefined}
-              />
-              <KpiCard
-                label="Total Leads"
-                value={metrics.total}
-                sub="Across active zips"
-                variant="neutral"
-              />
-              <KpiCard
-                label="Active Zips"
-                value="1"
-                sub="zip 90210"
-                variant="neutral"
-              />
-            </div>
+            {/* ── Pipeline strip ───────────────────────────────────────────── */}
+            <PipelineStrip
+              greeting={greeting}
+              userName={userName}
+              todayStr={todayStr}
+              hot={metrics.hot}
+              warm={unworked.length}
+              total={metrics.total}
+              skipCoverage={Math.round((actions.filter(a => a.contactConfidence !== null).length / Math.max(actions.length, 1)) * 100)}
+            />
 
             {/* ── Today's Pulse + slide-in drawer ──────────────────────────── */}
             <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--border)", height: 680 }}>
@@ -741,7 +756,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                       <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#8b90a8" }}>
                         Today&apos;s Pulse
                       </span>
-                      <span style={{ fontSize: "10px", fontWeight: 600, color: "#6b7094", letterSpacing: "0.03em", marginLeft: "10px" }}>
+                      <span style={{ fontSize: "9.5px", fontWeight: 500, color: "#3a3f55", letterSpacing: "0.03em", marginLeft: "10px" }}>
                         {todayStr}
                       </span>
                       {urgentCount > 0 && (
