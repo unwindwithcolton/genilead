@@ -1294,17 +1294,7 @@ function PulseDrawer({ action, onClose, onNavigate, onRefreshed, onDismiss }: {
           </div>
         </div>
 
-        {/* ── Why it surfaced — chips ── */}
-        {action.chips.length > 0 && (
-          <div style={{ padding: "8px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-            <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55", marginBottom: 6 }}>Why it surfaced</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-              {action.chips.map((chip) => (
-                <ReasonChip key={chip} label={chip} hot={action.tier === "hot"} />
-              ))}
-            </div>
-          </div>
-        )}
+        
 
         {/* ── AI Summary ── */}
         <div style={{ padding: "8px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
