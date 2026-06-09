@@ -415,7 +415,7 @@ function PipelineStrip({ greeting, userName, todayStr, hot, warm, total, skipCov
       <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "14px 20px", flexShrink: 0 }}>
         <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55" }}>Agent</div>
         <div style={{ fontSize: "15px", fontWeight: 700, color: "#eceef5" }}>{greeting}{userName ? `, ${userName}` : ""}</div>
-        <div style={{ fontSize: "12px", color: "#6b7094" }}>{todayStr}</div>
+        <div style={{ fontSize: "14px", fontWeight: 600, color: "#8892a4" }}>{todayStr}</div>
       </div>
       <div style={{ width: 1, background: "rgba(255,255,255,0.05)", flexShrink: 0 }} />
       <div style={{ display: "flex", flexDirection: "column", gap: 5, padding: "14px 20px", flex: "1 1 61.8%" }}>
@@ -756,9 +756,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                       <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#8b90a8" }}>
                         Today&apos;s Pulse
                       </span>
-                      <span style={{ fontSize: "9.5px", fontWeight: 500, color: "#3a3f55", letterSpacing: "0.03em", marginLeft: "10px" }}>
-                        {todayStr}
-                      </span>
+                      
                       {urgentCount > 0 && (
                         <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 6, background: "rgba(220,38,38,0.18)", color: "var(--hot)" }}>
                           {urgentCount} urgent
