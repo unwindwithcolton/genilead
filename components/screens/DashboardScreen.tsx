@@ -415,7 +415,7 @@ function PipelineStrip({ greeting, userName, todayStr, hot, warm, total, skipCov
       <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "14px 20px", flexShrink: 0 }}>
         <div style={{ fontSize: "9px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#3a3f55" }}>Agent</div>
         <div style={{ fontSize: "15px", fontWeight: 700, color: "#eceef5" }}>{greeting}{userName ? `, ${userName}` : ""}</div>
-        <div style={{ fontSize: "10px", color: "#3a3f55" }}>{todayStr}</div>
+        <div style={{ fontSize: "12px", color: "#6b7094" }}>{todayStr}</div>
       </div>
       <div style={{ width: 1, background: "rgba(255,255,255,0.05)", flexShrink: 0 }} />
       <div style={{ display: "flex", flexDirection: "column", gap: 5, padding: "14px 20px", flex: "1 1 61.8%" }}>
@@ -930,7 +930,7 @@ function ActionRow({
         onMouseLeave={() => setHovered(false)}
         style={{
           display: "flex", alignItems: "center", gap: 12,
-          padding: "14px 16px",
+          padding: "18px 16px",
           borderBottom: isLast ? "none" : "1px solid var(--bg-base)",
           borderLeft: isSelected
             ? "3px solid var(--accent)"
