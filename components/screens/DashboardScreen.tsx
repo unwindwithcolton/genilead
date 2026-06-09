@@ -741,7 +741,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                       <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#8b90a8" }}>
                         Today&apos;s Pulse
                       </span>
-                      <span style={{ fontSize: "9.5px", fontWeight: 500, color: "#3a3f55", letterSpacing: "0.03em", marginLeft: "10px" }}>
+                      <span style={{ fontSize: "10px", fontWeight: 600, color: "#6b7094", letterSpacing: "0.03em", marginLeft: "10px" }}>
                         {todayStr}
                       </span>
                       {urgentCount > 0 && (
