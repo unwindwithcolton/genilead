@@ -739,7 +739,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#8b90a8" }}>
-                        ⚡ Today&apos;s Pulse
+                        ⚡ {todayStr}
                       </span>
                       {urgentCount > 0 && (
                         <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 6px", borderRadius: 6, background: "rgba(220,38,38,0.18)", color: "var(--hot)" }}>
