@@ -415,6 +415,9 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
   const [userName,        setUserName]        = useState<string>("");
   const [selectedAction,  setSelectedAction]  = useState<ActionItem | null>(null);
   const [dismissedIds,    setDismissedIds]    = useState<Set<string>>(new Set());
+  const [zipCodes,        setZipCodes]        = useState<string[]>(["60950"]);
+  const [addingZip,       setAddingZip]       = useState(false);
+  const [zipInput,        setZipInput]        = useState("");
 
   useEffect(() => {
     async function load() {
@@ -548,6 +551,24 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
     load();
   }, []);
 
+  function hotCountForZip(zip: string) {
+    return actions.filter(a => a.zip === zip && a.tier === "hot").length;
+  }
+  function warmCountForZip(zip: string) {
+    return actions.filter(a => a.zip === zip && (a.tier === "warm" || a.tier === "nurture")).length;
+  }
+  function handleAddZip() {
+    const z = zipInput.trim();
+    if (z.length === 5 && !zipCodes.includes(z) && zipCodes.length < 3) {
+      setZipCodes(prev => [...prev, z]);
+    }
+    setZipInput("");
+    setAddingZip(false);
+  }
+  function handleRemoveZip(zip: string) {
+    setZipCodes(prev => prev.filter(z => z !== zip));
+  }
+
   const now            = new Date();
   const greeting       = greetingFor(now.getHours());
   const todayStr       = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -620,30 +641,60 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
         ) : (
           <>
             {/* ── ZIP selector ── */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)" }}>Area</span>
-              <div style={{ display: "flex", gap: 6 }}>
-                {[
-                  { zip: "60950", label: "60950", hot: 2, warm: 7 },
-                ].map(z => (
-                  <div key={z.zip} style={{
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                {zipCodes.map(zip => (
+                  <div key={zip} style={{
                     display: "flex", alignItems: "center", gap: 7,
                     padding: "5px 12px", borderRadius: 20,
                     background: "rgba(59,130,246,0.12)",
                     border: "1px solid rgba(59,130,246,0.35)",
-                    cursor: "pointer",
                   }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#c0c8e0" }}>{z.zip}</span>
-                    <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 700 }}>{z.hot} HOT</span>
-                    <span style={{ fontSize: 10, color: "#f59e0b", fontWeight: 700 }}>{z.warm} WARM</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#c0c8e0" }}>{zip}</span>
+                    <span style={{ fontSize: 10, color: "#ef4444", fontWeight: 700 }}>{hotCountForZip(zip)} HOT</span>
+                    <span style={{ fontSize: 10, color: "#f59e0b", fontWeight: 700 }}>{warmCountForZip(zip)} WARM</span>
+                    {zipCodes.length > 1 && (
+                      <span
+                        onClick={() => handleRemoveZip(zip)}
+                        style={{ fontSize: 10, color: "#3a3f55", cursor: "pointer", marginLeft: 2, lineHeight: 1 }}
+                        onMouseEnter={e => (e.currentTarget.style.color = "#f87171")}
+                        onMouseLeave={e => (e.currentTarget.style.color = "#3a3f55")}
+                      >✕</span>
+                    )}
                   </div>
                 ))}
-                <button style={{
-                  padding: "5px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600,
-                  background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
-                  color: "var(--text-muted)", cursor: "pointer",
-                }}>+ Add ZIP</button>
+
+                {addingZip ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <input
+                      autoFocus
+                      value={zipInput}
+                      onChange={e => setZipInput(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                      onKeyDown={e => { if (e.key === "Enter") handleAddZip(); if (e.key === "Escape") { setAddingZip(false); setZipInput(""); } }}
+                      placeholder="00000"
+                      style={{
+                        width: 60, padding: "4px 8px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                        background: "#13151b", border: "1px solid rgba(59,130,246,0.50)",
+                        color: "#c0c8e0", outline: "none", fontFamily: "inherit", textAlign: "center",
+                      }}
+                    />
+                    <button onClick={handleAddZip} style={{ fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: "rgba(59,130,246,0.20)", border: "1px solid rgba(59,130,246,0.40)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit" }}>Add</button>
+                    <button onClick={() => { setAddingZip(false); setZipInput(""); }} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 20, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "var(--text-muted)", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                  </div>
+                ) : (
+                  zipCodes.length < 3 && (
+                    <button
+                      onClick={() => setAddingZip(true)}
+                      style={{
+                        padding: "5px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600,
+                        background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
+                        color: "var(--text-muted)", cursor: "pointer", fontFamily: "inherit",
+                      }}
+                    >+ Add ZIP</button>
+                  )
+                )}
               </div>
             </div>
 
