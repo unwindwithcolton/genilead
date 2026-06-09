@@ -18,6 +18,7 @@ import ExplorerScreen from "@/components/screens/ExplorerScreen";
 import OutreachScreen from "@/components/screens/OutreachScreen";
 import ReportsScreen from "@/components/screens/ReportsScreen";
 import SettingsScreen from "@/components/screens/SettingsScreen";
+import ScoredLeadsScreen from "@/components/screens/ScoredLeadsScreen";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -88,6 +89,7 @@ export default function App() {
 
   const screenMap: Record<Tab, React.ReactNode> = {
     dashboard:     <DashboardScreen onNavigate={setActiveTab} />,
+    scored_leads:  <ScoredLeadsScreen onNavigate={setActiveTab} />,
     opportunities: <OpportunitiesScreen />,
     inbox:         <InboxScreen />,
     pipeline:      <PipelineScreen />,

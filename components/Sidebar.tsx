@@ -6,6 +6,7 @@
 
 export type Tab =
   | "dashboard"
+  | "scored_leads"
   | "opportunities"
   | "inbox"
   | "pipeline"
@@ -46,6 +47,7 @@ const ICONS = {
 
 const NAV_ITEMS: { tab: Tab; label: string; iconKey: keyof typeof ICONS }[] = [
   { tab: "dashboard",     label: "Dashboard",       iconKey: "home"    },
+  { tab: "scored_leads",  label: "Scored Leads",    iconKey: "target"  },
   { tab: "outreach",      label: "Outreach",        iconKey: "send"    },
   { tab: "inbox",         label: "Lead inbox",      iconKey: "inbox"   },
   { tab: "pipeline",      label: "Pipeline",        iconKey: "kanban"  },
