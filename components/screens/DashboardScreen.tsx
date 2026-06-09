@@ -671,7 +671,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
       </div>
 
       {/* ── Scrollable content ─────────────────────────────────────────────── */}
-      <div style={{ flex: 1, overflow: "hidden", padding: "20px 28px", display: "flex", flexDirection: "column", gap: "16px", position: "relative", zIndex: 1, background: "transparent", minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px", display: "flex", flexDirection: "column", gap: "16px", position: "relative", zIndex: 1, background: "transparent", minHeight: 0 }}>
         {loading ? (
           <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Loading...</div>
         ) : (
@@ -746,7 +746,7 @@ export default function DashboardScreen({ onNavigate }: DashboardScreenProps) {
             />
 
             {/* ── Today's Pulse + slide-in drawer ──────────────────────────── */}
-            <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--border)", flex: 1, minHeight: 0 }}>
+            <div style={{ display: "flex", gap: 0, alignItems: "stretch", borderRadius: "var(--r-md)", overflow: "hidden", border: "1px solid var(--border)", minHeight: "calc(100vh - 260px)" }}>
 
               {/* Pulse list — compresses when drawer is open */}
               <div style={{ flex: selectedAction ? "0 0 52%" : "1 1 100%", transition: "flex-basis 0.3s cubic-bezier(0.4,0,0.2,1)", minWidth: 0, overflow: "hidden", outline: "none", display: "flex", flexDirection: "column", height: "100%" }}>
