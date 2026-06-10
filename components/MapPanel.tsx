@@ -79,12 +79,18 @@ export default function MapPanel({
       fadeAnimation:      true,
     });
 
-    // CARTO Dark Matter — no extra CSS filter this time, keep it bright & readable
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    // Base map — roads and geography, no labels
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png", {
       subdomains: "abcd",
       maxZoom: 19,
       updateWhenIdle: false,
-      keepBuffer: 4,                            // pre-load surrounding tiles = smoother panning
+      keepBuffer: 4,
+    }).addTo(map);
+
+    // Labels on top — renders above zone polygons so town names stay visible
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 19,
     }).addTo(map);
 
     L.control.attribution({ position: "bottomleft", prefix: false })
