@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
+import { MOCK_PROPERTIES, type Property } from "../../lib/mockProperties";
 
 // Leaflet touches window/document on import — must be client-only
 const MapPanel = dynamic(() => import("../MapPanel"), { ssr: false });
@@ -679,6 +680,7 @@ export default function ExplorerScreen() {
             compareList={compareList}
             compareMode={compareMode}
             searchQuery={searchQuery}
+            properties={MOCK_PROPERTIES}
             onZipClick={handleZipClick}
           />
 
